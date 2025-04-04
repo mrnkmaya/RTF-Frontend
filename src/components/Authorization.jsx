@@ -52,14 +52,14 @@ const Authorization = () => {
                 <div>
                     <label id='login' className={LABEL_STYLE}>Логин</label>
                     <input type='text' id='login' 
-                    className={`${INPUT_FIELD_STYLE} mt-[18px] mb-[40px]`}
+                    className={`${INPUT_FIELD_STYLE} mt-[18px] mb-[40px] pl-[20px]`}
                     value={username} 
                     onChange={(e) => setUsername(e.target.value)}
                     required
                     />
                     <label id='password' className={LABEL_STYLE}>Пароль</label>
                     <input type='password' id='password' 
-                    className={`${INPUT_FIELD_STYLE} mt-[18px]`}
+                    className={`${INPUT_FIELD_STYLE} mt-[18px] pl-[20px]`}
                     value={password} 
                     onChange={(e) => setPassword(e.target.value)}
                     required
