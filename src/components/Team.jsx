@@ -41,7 +41,7 @@ const Team = () => {
     return (
         <div className="bg-[#71798C] w-screen h-screen p-6">
             {users.map((user) => {
-                return <div className="w-[1283px] h-fit bg-[#292C33] rounded-3xl p-6 flex justify-between items-center mb-6">
+                return <div key={user.id} className="w-[1283px] h-fit bg-[#292C33] rounded-3xl p-6 flex justify-between items-center mb-6">
                     {/* <div className="flex items-center mb-3">
                         <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
                         <h1 className="font-gilroy_semibold text-white text-[32px] mr-auto leading-[38px]">Профиль</h1>

@@ -102,6 +102,23 @@ const Event = () => {
         .catch(error => { console.log(error); });
     };
 
+    const updateOrganizers = (selectedUserIds) => {
+        const updatedEvent = {
+          ...event,
+          organizers: selectedUserIds
+        };
+        
+        axios.put(`${BASE_URL}/api/event/${eventData.id}/`, updatedEvent, {
+          headers: { 
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}` 
+          }
+        })
+        .then(response => {
+          setEvent(updatedEvent); // Обновляем локальное состояние
+        })
+        .catch(error => console.log(error));
+      };
+
     const handleDelete = (evt) => {
         axios.delete(`${BASE_URL}/api/event/${eventData.id}/`, {
             headers: {
@@ -311,14 +328,25 @@ const Event = () => {
                         {event.organizers?.map((org) => {
                             return <p className="text-white font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[org]}</p>
                         })}
-                        <select multiple>
-                            {users?.map((user) => {
-                                return <option value={user.id} onClick={(evt) => {
-                                    if (event.organizers.indexOf(evt.target.value) === -1) {
-                                        event.organizers.push(evt.target.value)
-                                    }
-                                }}>{user.full_name}</option>
-                            })}
+                        <select 
+                            multiple
+                            value={event.organizers || []}
+                            onChange={(e) => {
+                                const options = e.target.options;
+                                const selectedIds = [];
+                                for (let i = 0; i < options.length; i++) {
+                                if (options[i].selected) {
+                                    selectedIds.push(options[i].value);
+                                }
+                                }
+                                updateOrganizers(selectedIds);
+                            }}
+                            >
+                            {users?.map((user) => (
+                                <option key={user.id} value={user.id}>
+                                {user.full_name}
+                                </option>
+                            ))}
                         </select>
                     </div>
                     :
