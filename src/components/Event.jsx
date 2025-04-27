@@ -67,7 +67,7 @@ const Event = () => {
                     });
                     setUsers(usersData.data);
 
-                    const proj = await axios.get(`${BASE_URL}/projects/projects/`, {
+                    const proj = await axios.get(`${BASE_URL}/projects/`, {
                         headers: {
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${localStorage.getItem('access_token')}`
@@ -118,12 +118,29 @@ const Event = () => {
     }
 
     const handleChangeStatus = (newStatus) => {
-        setEvent({...event, is_past: newStatus});
-        if (newStatus === false) {
-            setEvent({...event, date: format(new Date(), 'yyyy-MM-dd')});
-        }
-        updateEvent(event);
-    }
+        // Создаем обновленный объект события
+        const updatedEvent = {
+            ...event,
+            is_past: newStatus,
+            date: newStatus === false ? format(new Date(), 'yyyy-MM-dd') : event.date
+        };
+        
+        // Отправляем обновленные данные на сервер
+        axios.put(`${BASE_URL}/api/event/${eventData.id}/`, updatedEvent, {
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}` 
+            }
+        })
+        .then(response => {
+            // После успешного ответа обновляем локальное состояние
+            setEvent(updatedEvent);
+        }) 
+        .catch(error => { 
+            console.log(error);
+            // Можно добавить уведомление об ошибке
+        });
+    };
 
     function closeModal() {
         setFilesModalIsOpen(false);
@@ -135,7 +152,7 @@ const Event = () => {
             title: title, 
             custom_name: custom_name
         };
-        axios.post(`${BASE_URL}/projects/projects/10/create_google_document/`, data, {
+        axios.post(`${BASE_URL}/projects/10/create_google_document/`, data, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('access_token')}`
             }
@@ -163,7 +180,7 @@ const Event = () => {
             title: document.getElementById('folderName').value,
             event_id: eventData.id
         };
-        axios.post(`${BASE_URL}/projects/projects/create/`, data, {
+        axios.post(`${BASE_URL}/projects/create/`, data, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('access_token')}`
             }

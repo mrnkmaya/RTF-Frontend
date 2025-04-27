@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from 'react-router-dom'; 
 import axios from "axios";
-import { useLocation, useSearchParams } from "react-router-dom";
 import avatar_placeholder from "../photos/avatar_placeholder.png";
 import { BASE_URL } from "./Globals";
 
@@ -13,13 +13,15 @@ const checkPlaceholder = (data) => {
     return data ? data : 'Не указано';
 };
 
-const Profile = () => {
+const OtherProfile = () => {
     const [userdata, setUserdata] = useState({});
-    const [events, setEvents] = useState([]);
     const [isEditing, setIsEditing] = useState(false);
 
-    const location = useLocation();
-    const [searchParams] = useSearchParams();
+    const query = new URLSearchParams(useLocation().search);
+    const profileId = query.get('id');
+
+    const myAccessLevel = +localStorage.getItem('access_level');
+    const myCommission = localStorage.getItem('commission');
 
     useEffect(() => {
         if (localStorage.getItem('access_token') === null) {
@@ -27,37 +29,29 @@ const Profile = () => {
         } else {
             (async () => {
                 try {
-                    const currentPath = location.pathname;
-                    let profileId;
-
-                    if (currentPath === '/profile') {
-                        profileId = localStorage.getItem('profile_id');
-                    } else if (currentPath === '/profile_view') {
-                        profileId = searchParams.get('id');
-                    }
-                    // Получение профиля
-                    const response = await axios.get(`${BASE_URL}/api/profile/${profileId}/`, {
+                    const response = await axios.get(`${BASE_URL}/api/profile_view/${profileId}/`, {
                         headers: {
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                         }
                     });
                     setUserdata(response.data.profile);
-
-                    // Получение мероприятий пользователя
-                    const eventsResponse = await axios.get(`${BASE_URL}/api/profile_events/`, {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                        }
-                    });
-                    setEvents(eventsResponse.data.events);
                 } catch (e) {
                     console.error(e);
                 }
             })();
         }
-    }, []);
+    }, [profileId]);
+
+    const canEdit = () => {
+        if (myAccessLevel === 3) {
+            return true;
+        }
+        if (myAccessLevel === 2 && userdata.commission === myCommission) {
+            return true;
+        }
+        return false;
+    };
 
     const handleProfileUpdate = () => {
         const dataInForm = new FormData();
@@ -76,19 +70,21 @@ const Profile = () => {
 
     return (
         <div className="bg-[#71798C] w-screen h-auto p-6">
-            <div className="w-[1283px] h-auto bg-[#292C33] rounded-3xl p-6 mb-6">
+            <div className="w-[1283px] h-[300px] bg-[#292C33] rounded-3xl p-6">
                 <div className="flex items-center mb-3">
                     <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
-                    <h1 className="font-gilroy_semibold text-white text-[32px] mr-auto leading-[38px]">Мой профиль</h1>
-                    <button className={BUTTON_STYLE} onClick={(evt) => {
-                        evt.preventDefault();
-                        if (isEditing) {
-                            handleProfileUpdate();
-                        }
-                        setIsEditing(!isEditing);
-                    }}>
-                        {isEditing ? 'Подтвердить' : 'Редактировать'}
-                    </button>
+                    <h1 className="font-gilroy_semibold text-white text-[32px] mr-auto leading-[38px]">Просмотр профиля</h1>
+                    {canEdit() && (
+                        <button className={BUTTON_STYLE} onClick={(evt) => {
+                            evt.preventDefault();
+                            if (isEditing) {
+                                handleProfileUpdate();
+                            }
+                            setIsEditing(!isEditing);
+                        }}>
+                            {isEditing ? 'Подтвердить' : 'Редактировать'}
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex flex-row items-start gap-6">
@@ -137,30 +133,8 @@ const Profile = () => {
                     </div>
                 </div>
             </div>
-
-            {/* Блок мероприятий */}
-            <div className="w-[600px] h-auto bg-[#292C33] rounded-3xl p-6">
-                <div className="flex items-center mb-6">
-                    <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
-                    <h2 className="font-gilroy_semibold text-white text-[32px] leading-[38px]">Мои мероприятия</h2>
-                </div>
-
-                {events.length > 0 ? (
-                    <div className="grid grid-cols-3 gap-6">
-                        {events.map(event => (
-                            <div key={event.id} className="bg-[#394150] p-4 rounded-xl">
-                                <h3 className="font-gilroy_semibold text-white text-xl mb-2">{event.title}</h3>
-                                <p className="text-white text-opacity-70 text-sm">{event.description}</p>
-                                <p className="text-white text-opacity-50 text-xs mt-2">{event.date}</p>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="text-white text-opacity-50">У вас пока нет мероприятий</p>
-                )}
-            </div>
         </div>
     );
 };
 
-export default Profile;
+export default OtherProfile;

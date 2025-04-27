@@ -64,7 +64,7 @@ const Team = () => {
                                 {/* place-content-between */}
                                 <div>
                                     <h3 className={H3_STYLE}>Номер телефона</h3>
-                                    <p className={DATA_STYLE}>{checkPlaceholder(user.phone)}</p>
+                                    <p className={DATA_STYLE}>{checkPlaceholder(user.number_phone)}</p>
                                     {/* <p className={DATA_STYLE}>+7 (906) 801-50-01</p> */}
                                     {/* checkPlaceholder(userdata.phone) если Максим добавит номер телефона в запрос */}
                                 </div>

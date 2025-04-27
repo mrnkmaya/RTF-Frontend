@@ -6,6 +6,18 @@ import archive from '../vector-images/archiveicon.svg';
 import events from '../vector-images/eventsicon.svg';
 import { Link } from "react-router-dom";
 
+
+// const [username, setUsername] = useState('');
+// const [password, setPassword] = useState('');
+// const response = await axios.post(`${BASE_URL}/token/`, {
+//     username,
+//     password
+// }, {
+//     headers: { 'Content-Type': 'application/json' },
+//     withCredentials: true
+// });
+// const profileId = response.data.profile_id; 
+
 const NavigationBar = () => {
     return (
         <div className='bg-[#474D59] w-[109px] p-6'>

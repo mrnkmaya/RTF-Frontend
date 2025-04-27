@@ -11,36 +11,47 @@ const Authorization = () => {
 
     const auth = async (e) => {
         e.preventDefault();
-
-        const user = {
-            username: username,
-            password: password
-        };
-
-        const token = await axios.post(`${BASE_URL}/token/`, user, 
-        {
-            headers: {
-                'Content-Type': 'application/json'
+    
+        try {
+            const response = await axios.post(`${BASE_URL}/token/`, {
+                username,
+                password
+            }, {
+                headers: { 'Content-Type': 'application/json' },
+                withCredentials: true
+            });
+    
+            console.log('Login response:', response.data);
+    
+            const accessToken = response.data.access;
+            const refreshToken = response.data.refresh;
+            const profileId = response.data.profile_id; 
+    
+            if (!profileId) {
+                throw new Error("profile_id is missing in response");
             }
-        }, {withCredentials: true})
-        .then(response => {
+    
             localStorage.clear();
-            localStorage.setItem('access_token', response.data.access);
-            localStorage.setItem('refresh_token', response.data.refresh);
-            // console.log(response.data);
-            axios.defaults.headers.common['Authorization'] = `Bearer ${response.data['access']}`;
-            window.location.href = '/profile'
-        })
-        .catch(error => {
+            localStorage.setItem('access_token', accessToken);
+            localStorage.setItem('refresh_token', refreshToken);
+            localStorage.setItem('profile_id', profileId);
+    
+            axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+    
+            window.location.href = `/profile?id=${profileId}`;
+    
+        } catch (error) {
             const errorTextBox = document.getElementById('error-text');
             errorTextBox.className = LABEL_STYLE;
-            if (error.status === 401) {
+    
+            console.error('Auth error:', error);
+    
+            if (error.response?.status === 401) {
                 errorTextBox.textContent = 'Неверный логин или пароль! Попробуйте ещё раз.';
-            }
-            else {
+            } else {
                 errorTextBox.textContent = 'Ошибка сервера. Попробуйте повторить вход позже!';
             }
-        });
+        }
     };
 
     return (

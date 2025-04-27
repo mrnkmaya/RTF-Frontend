@@ -19,6 +19,7 @@ function App() {
         <Routes>
           <Route path='/' element={<Authorization/>}/> 
           <Route path='/profile' element={<Profile/>}/>
+          {/* <Route path="/profile/:id" element={<Profile />} /> */}
           <Route path='/calendar' element={<Calendar/>}/>
           <Route path='/events' element={<Events/>}/>
           <Route path='/event-page' element={<EventsOnDay/>}/>
