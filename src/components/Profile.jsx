@@ -7,7 +7,8 @@ import { BASE_URL } from "./Globals";
 const H3_STYLE = 'font-gilroy_semibold text-white opacity-50 text-[16px] leading-[19px] mb-[6px]';
 const DATA_STYLE = 'font-gilroy_semibold text-white text-[24px] leading-[17px]';
 const BUTTON_STYLE = 'bg-[#0077EB] w-[160px] h-[40px] rounded-xl font-gilroy_semibold text-white text-xl p-2';
-const INPUT_FIELD_STYLE = "w-[400px] h-[40px] rounded-lg bg-[#F1F4F9] border-[#D8D8D8]";
+const INPUT_FIELD_STYLE = "w-[200px] h-[40px] rounded-lg bg-[#F1F4F9] border-[#D8D8D8] pl-[10px]";
+const SELECT_STYLE = "w-[250px] h-[40px] rounded-lg bg-[#F1F4F9] border-[#D8D8D8] pl-[10px]";
 
 const checkPlaceholder = (data) => {
     return data ? data : 'Не указано';
@@ -19,8 +20,8 @@ const Profile = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [searchParams] = useSearchParams();
 
-    // Получаем ID профиля из URL или из localStorage (для своего профиля)
     const profileId = searchParams.get('id') || localStorage.getItem('profile_id');
+    const statusOptions = ['Активен', 'Не активен', 'В отпуске', 'Уволен'];
 
     useEffect(() => {
         if (localStorage.getItem('access_token') === null) {
@@ -28,7 +29,6 @@ const Profile = () => {
         } else {
             (async () => {
                 try {
-                    // Получение данных профиля
                     const profileResponse = await axios.get(`${BASE_URL}/api/profile/${profileId}/`, {
                         headers: {
                             'Content-Type': 'application/json',
@@ -37,7 +37,6 @@ const Profile = () => {
                     });
                     setUserdata(profileResponse.data.profile);
 
-                    // Получение мероприятий пользователя
                     const eventsResponse = await axios.get(`${BASE_URL}/api/profile_view/${profileId}/`, {
                         headers: {
                             'Content-Type': 'application/json',
@@ -50,15 +49,20 @@ const Profile = () => {
                 }
             })();
         }
-    }, [profileId]); // Добавляем profileId в зависимости useEffect
+    }, [profileId]);
+
 
     const handleProfileUpdate = async () => {
         try {
             const formData = new FormData();
+            formData.append('full_name', userdata.full_name || '');
             formData.append('commission', userdata.commission || '');
             formData.append('date_of_birth', userdata.date_of_birth || '');
             formData.append('number_phone', userdata.number_phone || '');
             formData.append('email', userdata.email || '');
+            formData.append('address', userdata.address || '');
+            formData.append('status', userdata.status || '');
+            
             
             if (userdata.profile_photo && typeof userdata.profile_photo === 'object') {
                 formData.append('profile_photo', userdata.profile_photo);
@@ -77,7 +81,9 @@ const Profile = () => {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                 }
             });
+            console.log('Ответ сервера:', response.data); 
             setUserdata(response.data.profile);
+            
             
         } catch (error) {
             console.error("Ошибка при обновлении профиля:", error.response?.data || error.message);
@@ -144,46 +150,48 @@ const Profile = () => {
                         )}
                     </div>
                     
-                    <div className="flex flex-col">
-                        <h2 className="font-gilroy_semibold text-white text-[32px] leading-[38px] mb-6">
-                            {checkPlaceholder(userdata.full_name)}
-                        </h2>
-                        
-                        <div className="flex flex-row gap-6 mb-6">
+                    <div className="flex flex-col flex-grow">
+                        {/* Верхняя строка - ФИО и Статус */}
+                        <div className="grid grid-cols-2 gap-6 mb-6">
                             <div>
-                                <h3 className={H3_STYLE}>Комиссия</h3>
+                                <h3 className={H3_STYLE}>ФИО</h3>
                                 {isEditing ? (
                                     <input 
-                                        className={`${INPUT_FIELD_STYLE} w-[250px] pl-[10px]`} 
-                                        value={userdata.commission || ''} 
-                                        onChange={(e) => setUserdata({...userdata, commission: e.target.value})}
+                                        className={INPUT_FIELD_STYLE} 
+                                        value={userdata.full_name || ''} 
+                                        onChange={(e) => setUserdata({...userdata, full_name: e.target.value})}
                                     />
                                 ) : (
-                                    <p className={DATA_STYLE}>{checkPlaceholder(userdata.commission)}</p>
+                                    <p className={DATA_STYLE}>{checkPlaceholder(userdata.full_name)}</p>
                                 )}
                             </div>
                             
                             <div>
-                                <h3 className={H3_STYLE}>День рождения</h3>
+                                <h3 className={H3_STYLE}>Статус</h3>
                                 {isEditing ? (
-                                    <input 
-                                        type="date"
-                                        className={`${INPUT_FIELD_STYLE} w-[250px] pl-[10px]`} 
-                                        value={userdata.date_of_birth || ''} 
-                                        onChange={(e) => setUserdata({...userdata, date_of_birth: e.target.value})}
-                                    />
+                                    <select
+                                        className={SELECT_STYLE}
+                                        value={userdata.status || ''}
+                                        onChange={(e) => setUserdata({...userdata, status: e.target.value})}
+                                    >
+                                        <option value="">Выберите статус</option>
+                                        {statusOptions.map(option => (
+                                            <option key={option} value={option}>{option}</option>
+                                        ))}
+                                    </select>
                                 ) : (
-                                    <p className={DATA_STYLE}>{checkPlaceholder(userdata.date_of_birth)}</p>
+                                    <p className={DATA_STYLE}>{checkPlaceholder(userdata.status)}</p>
                                 )}
                             </div>
                         </div>
-                        
-                        <div className="flex flex-row gap-6">
+
+                        {/* Нижняя строка - Телефон, ДР, Почта, Адрес */}
+                        <div className="grid grid-cols-4 gap-6">
                             <div>
-                                <h3 className={H3_STYLE}>Номер телефона</h3>
+                                <h3 className={H3_STYLE}>Телефон</h3>
                                 {isEditing ? (
                                     <input 
-                                        className={`${INPUT_FIELD_STYLE} w-[250px] pl-[10px]`} 
+                                        className={INPUT_FIELD_STYLE} 
                                         value={userdata.number_phone || ''} 
                                         onChange={(e) => setUserdata({...userdata, number_phone: e.target.value})}
                                     />
@@ -193,16 +201,43 @@ const Profile = () => {
                             </div>
                             
                             <div>
+                                <h3 className={H3_STYLE}>День рождения</h3>
+                                {isEditing ? (
+                                    <input 
+                                        type="date"
+                                        className={INPUT_FIELD_STYLE} 
+                                        value={userdata.date_of_birth || ''} 
+                                        onChange={(e) => setUserdata({...userdata, date_of_birth: e.target.value})}
+                                    />
+                                ) : (
+                                    <p className={DATA_STYLE}>{checkPlaceholder(userdata.date_of_birth)}</p>
+                                )}
+                            </div>
+                            
+                            <div>
                                 <h3 className={H3_STYLE}>Почта</h3>
                                 {isEditing ? (
                                     <input 
                                         type="email"
-                                        className={`${INPUT_FIELD_STYLE} w-[250px] pl-[10px]`} 
+                                        className={INPUT_FIELD_STYLE} 
                                         value={userdata.email || ''} 
                                         onChange={(e) => setUserdata({...userdata, email: e.target.value})}
                                     />
                                 ) : (
                                     <p className={DATA_STYLE}>{checkPlaceholder(userdata.email)}</p>
+                                )}
+                            </div>
+                            
+                            <div>
+                                <h3 className={H3_STYLE}>Адрес</h3>
+                                {isEditing ? (
+                                    <input 
+                                        className={INPUT_FIELD_STYLE} 
+                                        value={userdata.address || ''} 
+                                        onChange={(e) => setUserdata({...userdata, address: e.target.value})}
+                                    />
+                                ) : (
+                                    <p className={DATA_STYLE}>{checkPlaceholder(userdata.address)}</p>
                                 )}
                             </div>
                         </div>
