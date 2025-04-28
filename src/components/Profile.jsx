@@ -4,8 +4,8 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import avatar_placeholder from "../photos/avatar_placeholder.png";
 import { BASE_URL } from "./Globals";
 
-const H3_STYLE = 'font-gilroy_semibold text-white opacity-50 text-[16px] leading-[19px] mb-[6px]';
-const DATA_STYLE = 'font-gilroy_semibold text-white text-[24px] leading-[17px]';
+const H3_STYLE = 'font-gilroy_semibold text-[#808080] text-[16px] leading-[19px] mb-[6px]';
+const DATA_STYLE = 'font-gilroy_semibold text-[#0D062D] text-[24px] leading-[17px]';
 const BUTTON_STYLE = 'bg-[#0077EB] w-[160px] h-[40px] rounded-xl font-gilroy_semibold text-white text-xl p-2';
 const INPUT_FIELD_STYLE = "w-[400px] h-[40px] rounded-lg bg-[#F1F4F9] border-[#D8D8D8]";
 
@@ -153,11 +153,11 @@ const Profile = () => {
     }
 
     return (
-        <div className="bg-[#71798C] w-screen h-auto p-6">
-            <div className="w-[1283px] h-auto bg-[#292C33] rounded-3xl p-6 mb-6">
+        <div className="bg-[#ECF2FF] w-screen h-auto p-6">
+            <div className="w-[1283px] h-auto bg-[#FFFFFF] rounded-3xl p-6 mb-6">
                 <div className="flex items-center mb-3">
                     <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
-                    <h1 className="font-gilroy_semibold text-white text-[32px] mr-auto leading-[38px]">
+                    <h1 className="font-gilroy_semibold text-[#0D062D] text-[32px] mr-auto leading-[38px]">
                         {isOwnProfile ? 'Мой профиль' : 'Профиль пользователя'}
                     </h1>
                     
@@ -184,7 +184,7 @@ const Profile = () => {
                     />
                     
                     <div className="flex flex-col">
-                        <h2 className="font-gilroy_semibold text-white text-[32px] leading-[38px] mb-6">
+                        <h2 className="font-gilroy_semibold text-[#0D062D] text-[32px] leading-[38px] mb-6">
                             {checkPlaceholder(profileData.full_name)}
                         </h2>
                         
@@ -263,10 +263,10 @@ const Profile = () => {
 
             {/* Блок мероприятий */}
             {currentUserAccessLevel >= 2 && (
-                <div className="w-[600px] h-auto bg-[#292C33] rounded-3xl p-6">
+                <div className="w-[600px] h-auto bg-[#FFFFFF] rounded-3xl p-6">
                     <div className="flex items-center mb-6">
                         <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
-                        <h2 className="font-gilroy_semibold text-white text-[32px] leading-[38px]">
+                        <h2 className="font-gilroy_semibold text-[#0D062D] text-[32px] leading-[38px]">
                             {isOwnProfile ? 'Мои мероприятия' : 'Мероприятия пользователя'}
                         </h2>
                     </div>
@@ -274,10 +274,10 @@ const Profile = () => {
                     {events.length > 0 ? (
                         <div className="grid grid-cols-3 gap-6">
                             {events.map(event => (
-                                <div key={event.id} className="bg-[#394150] p-4 rounded-xl">
-                                    <h3 className="font-gilroy_semibold text-white text-xl mb-2">{event.title}</h3>
-                                    <p className="text-white text-opacity-70 text-sm">{event.description}</p>
-                                    <p className="text-white text-opacity-50 text-xs mt-2">
+                                <div key={event.id} className="bg-[#FFFFFF] p-4 rounded-xl">
+                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">{event.title}</h3>
+                                    <p className="text-[#0D062D] text-opacity-70 text-sm">{event.description}</p>
+                                    <p className="text-[#0D062D] text-opacity-50 text-xs mt-2">
                                         {new Date(event.date).toLocaleDateString()}
                                     </p>
                                 </div>

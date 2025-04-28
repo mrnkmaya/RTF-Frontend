@@ -57,11 +57,11 @@ const Authorization = () => {
     };
 
     return (
-        <div className="w-screen h-screen bg-[#71798C] content-center">
+        <div className="w-screen h-screen bg-[#ECF2FF] content-center">
             <form
-                className="w-[630px] h-[679px] flex flex-col items-center px-[57px] py-[57px] gap-16 rounded-3xl mx-auto align-baseline bg-[#292C33]"
+                className="w-[630px] h-[679px] flex flex-col items-center px-[57px] py-[57px] gap-16 rounded-3xl mx-auto align-baseline bg-[#FFFFFF]"
                 onSubmit={auth}>
-                <h1 className="text-[32px] font-gilroy_bold text-[#FFFFFF]">Авторизация</h1>
+                <h1 className="text-[32px] font-gilroy_bold text-[#0D062D]">Авторизация</h1>
                 <div>
                     <label id='login' className={LABEL_STYLE}>Логин</label>
                     <input type='text' id='login' 
