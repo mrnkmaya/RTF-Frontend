@@ -25,7 +25,8 @@ const Authorization = () => {
     
             const accessToken = response.data.access;
             const refreshToken = response.data.refresh;
-            const profileId = response.data.profile_id; 
+            const profileId = response.data.profile_id;
+            const accessLevel = response.data.access_level; // Получаем уровень доступа
     
             if (!profileId) {
                 throw new Error("profile_id is missing in response");
@@ -35,6 +36,7 @@ const Authorization = () => {
             localStorage.setItem('access_token', accessToken);
             localStorage.setItem('refresh_token', refreshToken);
             localStorage.setItem('profile_id', profileId);
+            localStorage.setItem('access_level', accessLevel); // Сохраняем уровень доступа
     
             axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
     

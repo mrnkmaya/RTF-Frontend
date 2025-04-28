@@ -78,7 +78,7 @@ const Team = () => {
                         </div>
                     </div>
                     <Link to={`/profile?id=${user.id}`}>
-                        <button value={user.id} className={`${BUTTON_STYLE} text-xl align-baseline`}>Профиль</button>
+                        <button value={user.id} className={`${BUTTON_STYLE} text-xl align-baseline` }>Профиль</button>
                     </Link>
                     {/* onClick={(evt) => {window.location.href = `/profile?id=${user.id}`}} */}
                 </div>
