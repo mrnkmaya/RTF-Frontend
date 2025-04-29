@@ -4,7 +4,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import avatar_placeholder from "../photos/avatar_placeholder.png";
 import { BASE_URL } from "./Globals";
 
-const H3_STYLE = 'font-gilroy_semibold text-[#808080] text-[16px] leading-[19px] mb-[6px]';
+const H3_STYLE = 'font-gilroy_semibold text-[#0D062D] opacity-50 text-[16px] leading-[19px] mb-[6px]';
 const DATA_STYLE = 'font-gilroy_semibold text-[#0D062D] text-[24px] leading-[17px]';
 const BUTTON_STYLE = 'bg-[#0077EB] w-[160px] h-[40px] rounded-xl font-gilroy_semibold text-white text-xl p-2';
 const INPUT_FIELD_STYLE = "w-[400px] h-[40px] rounded-lg bg-[#F1F4F9] border-[#D8D8D8]";
@@ -33,19 +33,17 @@ const Profile = () => {
 
         // Для 1 уровня - запрещаем просмотр чужих профилей
         if (currentUserAccessLevel === 1 && !isOwnProfile) {
-            navigate('/team'); // Перенаправляем на страницу команды
+            navigate('/team');
             return;
         }
     }, [currentUserAccessLevel, isOwnProfile, navigate]);
 
-    // Определяем, может ли пользователь редактировать профиль
     const canEdit = () => {
-        if (isOwnProfile) return true; // Свой профиль можно редактировать
-        if (currentUserAccessLevel >= 3) return true; // 3+ уровень может редактировать
+        if (isOwnProfile) return true;
+        if (currentUserAccessLevel >= 3) return true;
         return false;
     };
 
-    // Определяем, какие поля можно редактировать
     const getEditableFields = () => {
         if (isOwnProfile) {
             return {
@@ -92,7 +90,7 @@ const Profile = () => {
             } catch (error) {
                 console.error("Ошибка загрузки данных:", error);
                 if (error.response?.status === 403) {
-                    navigate('/team'); // Если нет прав на просмотр
+                    navigate('/team');
                 }
             } finally {
                 setIsLoading(false);
@@ -109,28 +107,33 @@ const Profile = () => {
                 ? `${BASE_URL}/api/profile/${viewedProfileId}/`
                 : `${BASE_URL}/api/profile_view/${viewedProfileId}/`;
             
-            // Формируем данные для отправки в зависимости от прав
-            const updateData = {};
-            if (editableFields.commission) updateData.commission = profileData.commission;
+            const formData = new FormData();
+            
+            if (editableFields.commission)
+
+formData.append('commission', profileData.commission);
             if (isOwnProfile) {
-                updateData.date_of_birth = profileData.date_of_birth;
-                updateData.number_phone = profileData.number_phone;
-                updateData.email = profileData.email;
+                formData.append('date_of_birth', profileData.date_of_birth);
+                formData.append('number_phone', profileData.number_phone);
+                formData.append('email', profileData.email);
+            }
+            
+            if (profileData.profile_photo instanceof File) {
+                formData.append('profile_photo', profileData.profile_photo);
             }
     
             await axios.put(
                 endpoint,
-                updateData,
+                formData,
                 {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'multipart/form-data'
                     }
                 }
             );
     
             setIsEditing(false);
-            // Обновляем данные
             const { data } = await axios.get(endpoint, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}`
@@ -144,10 +147,16 @@ const Profile = () => {
         }
     };
 
+    const handleFileChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            setProfileData({...profileData, profile_photo: e.target.files[0]});
+        }
+    };
+
     if (isLoading) {
         return (
-            <div className="bg-[#71798C] w-screen h-screen flex items-center justify-center">
-                <div className="text-white text-2xl">Загрузка...</div>
+            <div className="bg-[#ECF2FF] w-screen h-screen flex items-center justify-center">
+                <div className="text-[#0D062D] text-2xl">Загрузка...</div>
             </div>
         );
     }
@@ -173,15 +182,32 @@ const Profile = () => {
                 </div>
 
                 <div className="flex flex-row items-start gap-6">
-                    <img
-                        src={profileData.profile_photo 
-                            ? `${BASE_URL}${profileData.profile_photo}`
-                            : avatar_placeholder}
-                        width="185"
-                        height="185"
-                        alt="Фото профиля"
-                        className="rounded-[50%] object-cover"
-                    />
+                    <div className="relative">
+                        <img
+                            src={profileData.profile_photo 
+                                ? profileData.profile_photo instanceof File 
+                                    ? URL.createObjectURL(profileData.profile_photo)
+                                    : `${BASE_URL}${profileData.profile_photo}`
+                                : avatar_placeholder}
+                            width="185"
+                            height="185"
+                            alt="Фото профиля"
+                            className="rounded-[50%] object-cover"
+                        />
+                        {isEditing && (
+                            <div className="absolute bottom-0 right-0">
+                                <label className={`${BUTTON_STYLE} text-white `}>
+                                    Изменить
+                                    <input 
+                                        type="file" 
+                                        className="hidden" 
+                                        accept="image/*"
+                                        onChange={handleFileChange}
+                                    />
+                                </label>
+                            </div>
+                        )}
+                    </div>
                     
                     <div className="flex flex-col">
                         <h2 className="font-gilroy_semibold text-[#0D062D] text-[32px] leading-[38px] mb-6">
@@ -256,6 +282,21 @@ const Profile = () => {
                                     <p className={DATA_STYLE}>{checkPlaceholder(profileData.email)}</p>
                                 )}
                             </div>
+                            <div>
+                                <h3 className={H3_STYLE}>Адрес</h3>
+                                {isEditing && editableFields.adress ? (
+                                    <input
+                                        className={`${INPUT_FIELD_STYLE} w-[250px] pl-[10px]`}
+                                        value={profileData.adress || ''}
+                                        onChange={(e) => setProfileData({
+                                            ...profileData,
+                                            adress: e.target.value
+                                        })}
+                                    />
+                                ) : (
+                                    <p className={DATA_STYLE}>{checkPlaceholder(profileData.adress)}</p>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -284,7 +325,7 @@ const Profile = () => {
                             ))}
                         </div>
                     ) : (
-                        <p className="text-white text-opacity-50">
+                        <p className="text-[#0D062D] text-opacity-50">
                             {isOwnProfile 
                                 ? 'У вас пока нет мероприятий' 
                                 : 'У пользователя нет мероприятий'}

@@ -185,9 +185,9 @@ const EventsOnDay = () => {
                     {thisDayEvents.map((event) => {
                         return <Link to={`/event?id=${event.id}`}>
                             <div className={`${EVENT_PLACEHOLDER_STYLE}`}>
-                                <h3 className={`${textStyleSemibold} text-[32px] leading-[43px] mb-3 text-white truncate`}>{event.title}</h3>
-                                <p className={`${textStyleRegular} text-[20px] leading-[24px] mb-[51px] text-white truncate`}>{event.description}</p>
-                                <p className={`${textStyleSemibold} text-[20px] leading-[24px] mb-1 text-white`}>Организатор</p>
+                                <h3 className={`${textStyleSemibold} text-[32px] leading-[43px] mb-3 text-[#0D062D] truncate`}>{event.title}</h3>
+                                <p className={`${textStyleRegular} text-[20px] leading-[24px] mb-[51px] text-[#0D062D] truncate`}>{event.description}</p>
+                                <p className={`${textStyleSemibold} text-[20px] leading-[24px] mb-1 text-[#0D062D]`}>Организатор</p>
                                 <div className="flex">
                                     <img alt='Аватарка организатора' width='23' height='23' className="rounded-[50%] mr-1"/>
                                     <p className={`${textStyleSemibold} `}>{event.organizers[0]}</p>

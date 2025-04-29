@@ -8,9 +8,9 @@ import avatar_placeholder from "../photos/avatar_placeholder.png";
 import { BASE_URL } from "./Globals";
 
 const buttonStyle = 'bg-[#0077EB] w-[160px] h-[40px] rounded-xl font-gilroy_semibold text-white text-xl p-2';
-const textStyleSemibold = 'font-gilroy_semibold text-white';
+const textStyleSemibold = 'font-gilroy_semibold text-[#0D062D]';
 const textStyleRegular = 'font-gilroy_regular text-black';
-const EVENT_PLACEHOLDER_STYLE = 'w-[412px] h-[244px] rounded-3xl bg-[#36536A] p-6 mb-[12px] mr-[12px]';
+const EVENT_PLACEHOLDER_STYLE = 'w-[412px] h-[244px] rounded-3xl bg-[#CCE8FF] p-6 mb-[12px] mr-[12px]';
 
 const modalWindowStyle = {
     content: {
@@ -20,7 +20,7 @@ const modalWindowStyle = {
         bottom: 'auto',
         marginRight: '-50%',
         transform: 'translate(-50%, -50%)',
-        backgroundColor: 'rgb(113 121 140)',
+        backgroundColor: '#CCE8FF',
         width: '75%',
         height: '75%',
         borderRadius: '24px',
@@ -94,38 +94,70 @@ const Events = () => {
     }
 
     const createEvent = async (e) => {
+        // Проверка наличия организатора
+        const organizerId = parseInt(localStorage.getItem('current_profile_id'));
+        if (!organizerId || isNaN(organizerId)) {
+            alert('Ошибка: Не указан организатор. Пожалуйста, войдите в систему.');
+            return;
+        }
+    
+        // Проверка обязательных полей
+        if (!title.trim()) {
+            alert('Пожалуйста, укажите название мероприятия');
+            return;
+        }
+    
+        // Формируем данные с учетом требований сервера
         const data = {
-            id: 193,
             title: title,
-            description: description,
+            description: description || "",
             date: format(new Date(), 'yyyy-MM-dd'),
-            organizers: [localStorage.getItem('current_profile_id')],
-            files: null,
-            tasks: '',
-            participants: [1],
-            projects: [],
-            is_past: false
+            organizers: [organizerId],  // Используем проверенный ID
+            is_past: false,  // Явно указываем значение
+            participants: [],
+            projects: []
         };
-
-        axios.post(`${BASE_URL}/api/events/`, data, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-            }
-        })
-        .then(response => {
+    
+        try {
+            console.log('Отправляемые данные:', data);  // Для отладки
+            
+            const response = await axios.post(`${BASE_URL}/api/events/`, data, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            });
+    
+            // Обработка успешного создания
             const successMessage = document.getElementById('success');
             successMessage.classList.remove('hidden');
-        })
+            setIsOpen(false);
+            
+            // Обновление списка мероприятий
+            const updatedEvents = await axios.get(`${BASE_URL}/api/events/`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            });
+            setEvents(updatedEvents.data);
+    
+            // Очистка формы
+            setTitle('');
+            setDesc('');
+    
+        } catch (error) {
+            console.error('Ошибка создания:', error.response?.data || error.message);
+            alert(`Ошибка: ${error.response?.data?.detail || 'Не удалось создать мероприятие'}`);
+        }
     }
 
     return (
-        <div id='background' className="bg-[#71798C] w-screen h-screen p-6">
-            <div className="bg-[#292C33] rounded-3xl p-6 h-full overflow-y-scroll">
+        <div id='background' className="bg-[#ECF2FF] w-screen h-auto p-6">
+            <div className="bg-[#FFFFFF] rounded-3xl p-6 h-screen overflow-y-scroll">
                 <div className="flex items-center mb-[24px]">
                     <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
                     <h1 className={`${textStyleSemibold} text-[40px] leading-[48px] mr-auto`}>Мероприятия</h1>
-                    <button className={`${buttonStyle} mr-3`}>Сортировать</button>
+                    {/* <button className={`${buttonStyle} mr-3`}>Сортировать</button> */}
                     <button className={`${buttonStyle} w-[260px]`} onClick={openModal}>Создать мероприятие</button>
                 </div>
                 <Modal
@@ -133,11 +165,12 @@ const Events = () => {
                     onRequestClose={closeModal}
                     contentLabel="Example Modal"
                     style={modalWindowStyle}
+                    appElement={document.getElementById('root')} 
                 >
                     <div className="flex gap-6 mb-6">
                         <p className={`${textStyleSemibold} text-[40px] leading-[48px]`}>Название:</p>
                         <input type="text" 
-                        className="w-[600px]"
+                        className="w-[600px] rounded pl-[10px]"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         required></input>
@@ -182,11 +215,11 @@ const Events = () => {
                 <div className="flex justify-start flex-wrap">
                     {events.map((event) => {
                         if (!event.is_past) {
-                        return <Link to={`/event?id=${event.id}`}>
+                        return <Link to={`/event?id=${event.id}`} key={event.id} >
                             <div className={`${EVENT_PLACEHOLDER_STYLE} flex flex-col`}>
-                                <h3 className={`${textStyleSemibold} text-[32px] leading-[43px] mb-3 text-white truncate`}>{event.title}</h3>
-                                <p className={`${textStyleRegular} text-[20px] leading-[24px] mb-[51px] text-white truncate`}>{event.description}</p>
-                                <p className={`${textStyleSemibold} text-[20px] leading-[24px] mb-1 text-white mt-auto`}>Организатор</p>
+                                <h3 className={`${textStyleSemibold} text-[32px] leading-[43px] mb-3 text-[#0D062D] truncate`}>{event.title}</h3>
+                                <p className={`${textStyleRegular} text-[20px] leading-[24px] mb-[51px] text-[#0D062D] truncate`}>{event.description}</p>
+                                <p className={`${textStyleSemibold} text-[20px] leading-[24px] mb-1 text-[#0D062D] mt-auto`}>Организатор</p>
                                 <div className="flex">
                                     <img src={avatar_placeholder} alt='Аватарка организатора' width='23' height='23' className="rounded-[50%] mr-1"/>
                                     {   
