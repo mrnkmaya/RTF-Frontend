@@ -274,7 +274,7 @@ const Profile = () => {
                     {events.length > 0 ? (
                         <div className="grid grid-cols-3 gap-6">
                             {events.map(event => (
-                                <div key={event.id} className="bg-[#FFFFFF] p-4 rounded-xl">
+                                <div key={event.id} className="bg-[#CCE8FF] p-4 rounded-xl">
                                     <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">{event.title}</h3>
                                     <p className="text-[#0D062D] text-opacity-70 text-sm">{event.description}</p>
                                     <p className="text-[#0D062D] text-opacity-50 text-xs mt-2">

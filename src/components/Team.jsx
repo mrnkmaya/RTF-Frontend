@@ -4,8 +4,8 @@ import {useEffect, useState} from "react";
 import { Link } from "react-router-dom";
 import { BASE_URL } from "./Globals";
 
-const H3_STYLE = 'font-gilroy_semibold text-white opacity-50 text-[16px] leading-[19px] mb-[6px]';
-const DATA_STYLE = 'font-gilroy_semibold text-white text-[24px] leading-[17px]';
+const H3_STYLE = 'font-gilroy_semibold text-[#0D062D] opacity-50 text-[16px] leading-[19px] mb-[6px]';
+const DATA_STYLE = 'font-gilroy_semibold text-[#0D062D] text-[24px] leading-[17px]';
 const BUTTON_STYLE = 'bg-[#0077EB] w-[160px] h-[40px] rounded-xl font-gilroy_semibold text-white p-2';
 
 const checkPlaceholder = (data) => {
@@ -39,17 +39,17 @@ const Team = () => {
     }, []);
 
     return (
-        <div className="bg-[#71798C] w-screen h-screen p-6">
+        <div className="bg-[#ECF2FF] w-full h-full p-6">
             {users.map((user) => {
-                return <div key={user.id} className="w-[1283px] h-fit bg-[#292C33] rounded-3xl p-6 flex justify-between items-center mb-6">
+                return <div key={user.id} className="w-[1283px] h-fit bg-[#FFFFFF] rounded-3xl p-6 flex justify-between items-center mb-6">
                     {/* <div className="flex items-center mb-3">
                         <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
-                        <h1 className="font-gilroy_semibold text-white text-[32px] mr-auto leading-[38px]">Профиль</h1>
+                        <h1 className="font-gilroy_semibold text-[#0D062D] text-[32px] mr-auto leading-[38px]">Профиль</h1>
                     </div> */}
                     <div className="flex flex-row items-start gap-6">
                         <img src={`${BASE_URL}/${user.profile_photo}`} width='185' height='185' alt='Кнопка профиля' className="rounded-[50%]"/>
                         <div className="flex flex-col">
-                            <h2 className="font-gilroy_semibold text-white text-[32px] leading-[38px] mb-6">{user.full_name}</h2>
+                            <h2 className="font-gilroy_semibold text-[#0D062D] text-[32px] leading-[38px] mb-6">{user.full_name}</h2>
                             <div className="flex flex-row gap-6 mb-6">
                                 <div>
                                     <h3 className={H3_STYLE}>Комиссия</h3>
