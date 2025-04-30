@@ -3,6 +3,7 @@ import axios from "axios";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import avatar_placeholder from "../photos/avatar_placeholder.png";
 import { BASE_URL } from "./Globals";
+import { Link } from "react-router-dom";
 
 const H3_STYLE = 'font-gilroy_semibold text-[#0D062D] opacity-50 text-[16px] leading-[19px] mb-[6px]';
 const DATA_STYLE = 'font-gilroy_semibold text-[#0D062D] text-[24px] leading-[17px]';
@@ -47,16 +48,16 @@ const Profile = () => {
         
         if (isOwnProfile) {
             return {
-                commission: isChairman, // Только председатель может менять свою комиссию
+                commission: true, // Только председатель может менять свою комиссию
                 date_of_birth: true,
                 number_phone: true,
                 email: true,
                 adress: true,
-                status: isChairman // Только председатель может менять свою должность
+                status: true // Только председатель может менять свою должность
             };
         }
         
-        if (isChairman) {
+        if (isOwnProfile == 3) {
             return {
                 commission: true, // Только председатель может менять комиссии других
                 date_of_birth: false,
@@ -366,14 +367,18 @@ const Profile = () => {
                     {events.length > 0 ? (
                         <div className="grid grid-cols-3 gap-6">
                             {events.map(event => (
-                                <div key={event.id} className="bg-[#CCE8FF] p-4 rounded-xl">
-                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">{event.title}</h3>
-                                    <p className="text-[#0D062D] text-opacity-70 text-sm">{event.description}</p>
-                                    <p className="text-[#0D062D] text-opacity-50 text-xs mt-2">
-                                        {new Date(event.date).toLocaleDateString()}
-                                    </p>
-                                </div>
-                            ))}
+    <Link 
+        key={event.id} 
+        to={`/event?id=${event.id}`} 
+        className="bg-[#CCE8FF] p-4 rounded-xl hover:bg-[#b3d9ff] transition-colors"
+    >
+        <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">{event.title}</h3>
+        <p className="text-[#0D062D] text-opacity-70 text-sm">{event.description}</p>
+        <p className="text-[#0D062D] text-opacity-50 text-xs mt-2">
+            {new Date(event.date).toLocaleDateString()}
+        </p>
+    </Link>
+))}
                         </div>
                     ) : (
                         <p className="text-[#0D062D] text-opacity-50">
