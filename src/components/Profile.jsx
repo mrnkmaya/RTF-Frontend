@@ -182,7 +182,8 @@ formData.append('commission', profileData.commission);
                 </div>
 
                 <div className="flex flex-row items-start gap-6">
-                    <div className="relative">
+                    <div className="relative w-[185px] h-[185px]">
+                    <div className="relative w-full h-full overflow-hidden rounded-full">
                         <img
                             src={profileData.profile_photo 
                                 ? profileData.profile_photo instanceof File 
@@ -192,11 +193,12 @@ formData.append('commission', profileData.commission);
                             width="185"
                             height="185"
                             alt="Фото профиля"
-                            className="rounded-[50%] object-cover"
+                            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 min-w-full min-h-full object-cover"
                         />
-                        {isEditing && (
+                        </div>
+                        {isEditing && isOwnProfile &&(
                             <div className="absolute bottom-0 right-0">
-                                <label className={`${BUTTON_STYLE} text-white `}>
+                                <label className={`${BUTTON_STYLE} `}>
                                     Изменить
                                     <input 
                                         type="file" 

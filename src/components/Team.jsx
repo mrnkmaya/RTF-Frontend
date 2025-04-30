@@ -42,12 +42,20 @@ const Team = () => {
         <div className="bg-[#ECF2FF] w-full h-full p-6">
             {users.map((user) => {
                 return <div key={user.id} className="w-[1283px] h-fit bg-[#FFFFFF] rounded-3xl p-6 flex justify-between items-center mb-6">
-                    {/* <div className="flex items-center mb-3">
-                        <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
-                        <h1 className="font-gilroy_semibold text-[#0D062D] text-[32px] mr-auto leading-[38px]">Профиль</h1>
-                    </div> */}
                     <div className="flex flex-row items-start gap-6">
-                        <img src={`${BASE_URL}/${user.profile_photo}`} width='185' height='185' alt='Кнопка профиля' className="rounded-[50%]"/>
+                    <div className="relative w-[185px] h-[185px]">
+                                <div className="relative w-full h-full overflow-hidden rounded-full">
+                                    <img
+                                        src={user.profile_photo 
+                                            ? `${BASE_URL}${user.profile_photo}`
+                                            : '/path/to/default/avatar.png'}
+                                        alt={`Фото ${user.full_name}`}
+                                        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 min-w-full min-h-full object-cover"
+                                    />
+                                </div>
+                            </div>
+                        
+                        
                         <div className="flex flex-col">
                             <h2 className="font-gilroy_semibold text-[#0D062D] text-[32px] leading-[38px] mb-6">{user.full_name}</h2>
                             <div className="flex flex-row gap-6 mb-6">
