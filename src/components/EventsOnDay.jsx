@@ -7,7 +7,7 @@ import Modal from 'react-modal';
 import { BASE_URL } from "./Globals";
 
 const buttonStyle = 'bg-[#0077EB] w-[160px] h-[40px] rounded-xl font-gilroy_semibold text-white text-xl p-2';
-const textStyleSemibold = 'font-gilroy_semibold text-white';
+const textStyleSemibold = 'font-gilroy_semibold text-[#0d062d]';
 const textStyleRegular = 'font-gilroy_regular text-black';
 const EVENT_PLACEHOLDER_STYLE = 'w-[412px] h-[244px] rounded-3xl bg-[#36536A] p-4 mb-[12px] mr-[12px]';
 
@@ -36,11 +36,11 @@ const EventsOnDay = () => {
             bottom: 'auto',
             marginRight: '-50%',
             transform: 'translate(-50%, -50%)',
-            backgroundColor: 'rgb(113 121 140)',
-            width: '75%',
-            height: '75%',
+            backgroundColor: '#FFFFFF',
+            width: '328px',
+            height: '126px',
             borderRadius: '24px',
-            padding: '32px',
+            padding: '0',
         },
       };
 
@@ -114,8 +114,8 @@ const EventsOnDay = () => {
     }, []);
 
     return (
-        <div className='mx-auto p-6 bg-[#71798C] w-screen h-screen'>
-            <div className="bg-[#292C33] rounded-3xl p-6 h-full overflow-y-scroll">
+        <div className='mx-auto p-6 bg-[#ECF2FF] w-screen h-screen'>
+            <div className="bg-[#FFFFFF] rounded-3xl p-6 h-full overflow-y-scroll">
                 <div className="flex items-center mb-[24px]">
                     <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
                     <h1 className={`${textStyleSemibold} text-[40px] leading-[48px] mr-auto`}>Календарь</h1>
@@ -127,10 +127,11 @@ const EventsOnDay = () => {
                 contentLabel="Example Modal"
                 style={modalWindowStyle}
                 >
-                <div className="flex gap-6 mb-6">
-                    <p className={`${textStyleSemibold} text-[40px] leading-[48px]`}>Название:</p>
+                <div className="pr-24px">
+                <div className="flex">
+                    <p className={`${textStyleSemibold} text-[15px] leading-[48px]`}>Название:</p>
                     <input type="text" 
-                    className="w-[600px]"
+                    className="w-[280px] h-[34px] rounded bg-[#F1F1F1]"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required></input>
@@ -165,8 +166,9 @@ const EventsOnDay = () => {
                 <ul className="p-0 m-0" onClick={makeTaskDone}>
                     {children.map((child, index) => <li key={index} className={`${taskStyle}`}>{child}</li>)}
                 </ul> */}
-                <button className={`${buttonStyle} w-[260px]`} onClick={createFile}>Добавить файлы</button>
-                <button className={`${buttonStyle} w-[260px]`} onClick={createEvent}>Создать мероприятие</button>
+                {/* <button className={`${buttonStyle} w-[260px]`} onClick={createFile}>Добавить файлы</button> */}
+                <button className={`${buttonStyle} w-[171px] h-[32px]`} onClick={createEvent}>Создать мероприятие</button>
+                </div>
             </Modal>
             <div id='success' className="hidden w-[610px] h-fit bg-[#5C6373] z-50 
             absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2
@@ -178,7 +180,7 @@ const EventsOnDay = () => {
                     setIsOpen(false);
                 }} className={`${buttonStyle}`}>Подтвердить</button>
             </div>
-                <h2 className="text-white font-gilroy_heavy text-[48px] leading-[61px]">
+                <h2 className="text-[#0d062d] font-gilroy_heavy text-[48px] leading-[61px]">
                     <span className="text-[100px] leading-[127px] mr-[16px]">{`${format(eventDate, 'dd')}`}</span> {`${curMonth.slice(0, curMonth.length-1)}я`}
                 </h2>
                 <div className="flex justify-start flex-wrap">

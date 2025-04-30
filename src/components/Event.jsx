@@ -308,18 +308,18 @@ const Event = () => {
                 <div className="w-auto break-all">
                     <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Название</p>
                     {isEditing
-                    ? <input className="mb-6
+                    ? <input className="mb-6 bg-[#F1F1F1] h-[40px] rounded pl-[10px]
                     " type="text" value={`${event.title}`} onChange={(e) => {setEvent({...event, title: e.target.value })}}/>
                     : <p className="font-gilroy_heavy text-[48px] text-[#0D062D] leading-[61px] mb-[12px]">{event.title}</p>
                     }
                     <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Дата</p>
                     {isEditing
-                    ? <input className="mb-6" type='date' onChange={(e) => {setEvent({...event, date: e.target.value })}}/>
+                    ? <input className="mb-6 bg-[#F1F1F1] h-[40px] rounded pl-[10px]" type='date' onChange={(e) => {setEvent({...event, date: e.target.value })}}/>
                     : <p className="font-gilroy_bold text-[24px] text-[#0D062D] leading-[30px] mb-[12px]">{formateDate(event.date)}</p>
                     }
                     <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Описание</p>
                     {isEditing
-                    ? <input className="mb-6" type="text" value={`${event.description}`} onChange={(e) => {setEvent({...event, description: e.target.value })}}/>
+                    ? <input className="mb-6 bg-[#F1F1F1] h-[40px] rounded pl-[10px]" type="text" value={`${event.description}`} onChange={(e) => {setEvent({...event, description: e.target.value })}}/>
                     : <p className="font-gilroy_bold text-[24px] text-[#0D062D] leading-[30px] mb-[12px]">{event.description}</p>
                     }
                     <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Организаторы</p>
@@ -332,6 +332,7 @@ const Event = () => {
                         <select 
                             multiple
                             value={event.organizers || []}
+                            className="bg-[#F1F1F1] rounded pl-[10px]"
                             onChange={(e) => {
                                 const options = e.target.options;
                                 const selectedIds = [];
@@ -355,7 +356,7 @@ const Event = () => {
                         return <p className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[org]}</p>
                     })
                     }
-                    <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Файлы</p>
+                    <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Папки</p>
                     <div className="flex flex-col">
                         {event.projects?.map((proId) => {
                             return <Link to={`/folder?projid=${proId}&eventid=${event.id}`} className="bg-[#CCE8FF] w-[200px] h-fit rounded-xl px-[12px] py-[8px] text-[#0D062D] font-gilroy_semibold font-[20px] leading-[25px] mb-3"
@@ -365,8 +366,8 @@ const Event = () => {
                     </div>
                     {isEditing
                     ?<form id='folderForm'>
-                        <input type="text" id="folderName" required/>
-                        <button type="button" onClick={(evt) => {createFolder()}} className={`${buttonStyle}`}>Сохранить</button>
+                        <input className="bg-[#F1F1F1] rounded mr-[10px]" type="text" id="folderName" required/>
+                        <button type="button" onClick={(evt) => {createFolder()}} className={`${buttonStyle}`}>Создать</button>
                     </form>
                     :<div></div>
                     }
@@ -396,7 +397,7 @@ const Event = () => {
             </div>
             <div id='error_folder' className="hidden bg-[#631E1E80] w-[600px] h-[60px] rounded-[15px] border-[4px] border-[#631E1E] 
             text-center p-[15px] absolute top-3/4 left-1/2 -translate-x-1/2 z-50">
-                <p className="text-[#0D062D] text-[24px] leading-[30px] font-gilroy_bold">Google сервис не создан</p>
+                <p className="text-[#0D062D] text-[24px] leading-[30px] font-gilroy_bold">Папка не создана</p>
             </div>
         </div>
     );
