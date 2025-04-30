@@ -7,7 +7,7 @@ import { BASE_URL } from "./Globals";
 const H3_STYLE = 'font-gilroy_semibold text-[#0D062D] opacity-50 text-[16px] leading-[19px] mb-[6px]';
 const DATA_STYLE = 'font-gilroy_semibold text-[#0D062D] text-[24px] leading-[17px]';
 const BUTTON_STYLE = 'bg-[#0077EB] w-[160px] h-[40px] rounded-xl font-gilroy_semibold text-white text-xl p-2';
-const INPUT_FIELD_STYLE = "w-[400px] h-[40px] rounded-lg bg-[#F1F4F9] border-[#D8D8D8]";
+const INPUT_FIELD_STYLE = " h-[40px] rounded-lg bg-[#F1F4F9] border-[#D8D8D8]";
 
 const checkPlaceholder = (data) => data || 'Не указано';
 
@@ -39,33 +39,41 @@ const Profile = () => {
     }, [currentUserAccessLevel, isOwnProfile, navigate]);
 
     const canEdit = () => {
-        if (isOwnProfile) return true;
-        if (currentUserAccessLevel >= 3) return true;
-        return false;
+        return isOwnProfile || currentUserAccessLevel === 3; //&&??
     };
 
     const getEditableFields = () => {
+        const isChairman = currentUserAccessLevel === 3;
+        
         if (isOwnProfile) {
             return {
-                commission: true,
+                commission: isChairman, // Только председатель может менять свою комиссию
                 date_of_birth: true,
                 number_phone: true,
-                email: true
+                email: true,
+                adress: true,
+                status: isChairman // Только председатель может менять свою должность
             };
         }
-        if (currentUserAccessLevel >= 3) {
+        
+        if (isChairman) {
             return {
-                commission: true,
+                commission: true, // Только председатель может менять комиссии других
                 date_of_birth: false,
                 number_phone: false,
-                email: false
+                email: false,
+                adress: false,
+                status: true // Только председатель может менять должности других
             };
         }
+        
         return {
             commission: false,
             date_of_birth: false,
             number_phone: false,
-            email: false
+            email: false,
+            adress: false,
+            status: false
         };
     };
 
@@ -102,7 +110,7 @@ const Profile = () => {
 
     const handleSave = async () => {
         setIsLoading(true);
-        try {
+        try {            
             const endpoint = isOwnProfile 
                 ? `${BASE_URL}/api/profile/${viewedProfileId}/`
                 : `${BASE_URL}/api/profile_view/${viewedProfileId}/`;
@@ -110,8 +118,16 @@ const Profile = () => {
             const formData = new FormData();
             
             if (editableFields.commission)
+                formData.append('commission', profileData.commission);
 
-formData.append('commission', profileData.commission);
+            if (editableFields.adress) {
+                formData.append('adress', profileData.adress);
+            }
+
+            if (editableFields.status) {
+                formData.append('status', profileData.status);
+            }
+
             if (isOwnProfile) {
                 formData.append('date_of_birth', profileData.date_of_birth);
                 formData.append('number_phone', profileData.number_phone);
@@ -139,7 +155,9 @@ formData.append('commission', profileData.commission);
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                 }
             });
+
             setProfileData(data.profile);
+            
         } catch (error) {
             console.error("Ошибка сохранения:", error.response?.data || error.message);
         } finally {
@@ -218,46 +236,59 @@ formData.append('commission', profileData.commission);
                         
                         <div className="flex flex-row gap-6 mb-6">
                             <div>
+                            <h3 className={H3_STYLE}>Должность</h3>
+                            {isEditing && editableFields.status ? (
+                                <select
+                                    className={`${INPUT_FIELD_STYLE} w-[250px] pl-[10px]`}
+                                    value={profileData.status || ''}
+                                    onChange={(e) => 
+                                        setProfileData({
+                                        ...profileData,
+                                        status: e.target.value
+                                    })}
+                                >
+                                    <option value="Председатель">Председатель</option>
+                                    <option value="Заместитель председателя">Заместитель председателя</option>
+                                    <option value="Член комиссии">Член комиссии</option>
+                                </select>
+                        ) : (
+                            <p className={DATA_STYLE}>{checkPlaceholder(profileData.status)}</p>
+                        )}                        
+                        </div>
+                            <div>
                                 <h3 className={H3_STYLE}>Комиссия</h3>
                                 {isEditing && editableFields.commission ? (
-                                    <input
-                                        className={`${INPUT_FIELD_STYLE} w-[250px] pl-[10px]`}
-                                        value={profileData.commission || ''}
-                                        onChange={(e) => setProfileData({
-                                            ...profileData,
-                                            commission: e.target.value
-                                        })}
-                                    />
+                                    <select
+                                    className={`${INPUT_FIELD_STYLE} w-[250px] pl-[10px]`}
+                                    value={profileData.commission || ''}
+                                    onChange={(e) => setProfileData({
+                                        ...profileData,
+                                        commission: e.target.value
+                                    })}
+                                    >
+                                    <option value="">-</option>
+                                    <option value="По техническому обеспечению проектов">По техническому обеспечению проектов</option>
+                                    <option value="По работе с партнерами">По работе с партнерами</option>
+                                    <option value="По культурно-массовой работе">По культурно-массовой работе</option>
+                                    <option value="По работе с наставниками">По работе с наставниками</option>
+                                    <option value="Учебно-научная">Учебно-научная</option>
+                                    <option value="Жилищно-бытовая">Жилищно-бытовая</option>
+                                    <option value="Спортивно-массовая">Спортивно-массовая</option>
+                                    <option value="Организационно-массовая">Организационно-массовая</option>
+                                    <option value="Социально правовая">Социально правовая</option>
+                                    </select>
                                 ) : (
                                     <p className={DATA_STYLE}>{checkPlaceholder(profileData.commission)}</p>
                                 )}
-                            </div>
-                            
-                            <div>
-                                <h3 className={H3_STYLE}>День рождения</h3>
-                                {isEditing && editableFields.date_of_birth ? (
-                                    <input
-                                        type="date"
-                                        className={`${INPUT_FIELD_STYLE} w-[250px] pl-[10px]`}
-                                        value={profileData.date_of_birth || ''}
-                                        onChange={(e) => setProfileData({
-                                            ...profileData,
-                                            date_of_birth: e.target.value
-                                        })}
-                                    />
-                                ) : (
-                                    <p className={DATA_STYLE}>{checkPlaceholder(new Date(profileData.date_of_birth).toLocaleDateString())}</p>
-                                )}
-                                {}
-                            </div>
+                            </div>                          
                         </div>
                         
-                        <div className="flex flex-row gap-6">
+                        <div className="flex flex-row gap-4">
                             <div>
                                 <h3 className={H3_STYLE}>Номер телефона</h3>
                                 {isEditing && editableFields.number_phone ? (
                                     <input
-                                        className={`${INPUT_FIELD_STYLE} w-[250px] pl-[10px]`}
+                                        className={`${INPUT_FIELD_STYLE} w-[200px] pl-[10px]`}
                                         value={profileData.number_phone || ''}
                                         onChange={(e) => setProfileData({
                                             ...profileData,
@@ -274,7 +305,7 @@ formData.append('commission', profileData.commission);
                                 {isEditing && editableFields.email ? (
                                     <input
                                         type="email"
-                                        className={`${INPUT_FIELD_STYLE} w-[250px] pl-[10px]`}
+                                        className={`${INPUT_FIELD_STYLE} w-[200px] pl-[10px]`}
                                         value={profileData.email || ''}
                                         onChange={(e) => setProfileData({
                                             ...profileData,
@@ -286,10 +317,27 @@ formData.append('commission', profileData.commission);
                                 )}
                             </div>
                             <div>
+                                <h3 className={H3_STYLE}>День рождения</h3>
+                                {isEditing && editableFields.date_of_birth ? (
+                                    <input
+                                        type="date"
+                                        className={`${INPUT_FIELD_STYLE} w-[200px] pl-[10px]`}
+                                        value={profileData.date_of_birth || ''}
+                                        onChange={(e) => setProfileData({
+                                            ...profileData,
+                                            date_of_birth: e.target.value
+                                        })}
+                                    />
+                                ) : (
+                                    <p className={DATA_STYLE}>{checkPlaceholder(new Date(profileData.date_of_birth).toLocaleDateString())}</p>
+                                )}
+                                {}
+                            </div>
+                            <div>
                                 <h3 className={H3_STYLE}>Адрес</h3>
                                 {isEditing && editableFields.adress ? (
                                     <input
-                                        className={`${INPUT_FIELD_STYLE} w-[250px] pl-[10px]`}
+                                        className={`${INPUT_FIELD_STYLE} w-[200px] pl-[10px]`}
                                         value={profileData.adress || ''}
                                         onChange={(e) => setProfileData({
                                             ...profileData,

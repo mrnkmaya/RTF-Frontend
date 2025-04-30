@@ -84,7 +84,7 @@ const Events = () => {
             title: 'ThisIsTitle', 
             custom_name: 'ThisIsCustomName' 
         };
-        axios.post(`${BASE_URL}/projects/projects/10/create_google_document/`, data, {
+        axios.post(`${BASE_URL}/projects/10/create_google_document/`, data, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('access_token')}`
             }
@@ -95,7 +95,7 @@ const Events = () => {
 
     const createEvent = async (e) => {
         // Проверка наличия организатора
-        const organizerId = parseInt(localStorage.getItem('current_profile_id'));
+        const organizerId = parseInt(localStorage.getItem('profile_id'));
         if (!organizerId || isNaN(organizerId)) {
             alert('Ошибка: Не указан организатор. Пожалуйста, войдите в систему.');
             return;

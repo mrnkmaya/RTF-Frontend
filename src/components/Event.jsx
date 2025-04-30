@@ -308,7 +308,8 @@ const Event = () => {
                 <div className="w-auto break-all">
                     <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Название</p>
                     {isEditing
-                    ? <input className="mb-6" type="text" value={`${event.title}`} onChange={(e) => {setEvent({...event, title: e.target.value })}}/>
+                    ? <input className="mb-6
+                    " type="text" value={`${event.title}`} onChange={(e) => {setEvent({...event, title: e.target.value })}}/>
                     : <p className="font-gilroy_heavy text-[48px] text-[#0D062D] leading-[61px] mb-[12px]">{event.title}</p>
                     }
                     <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Дата</p>
