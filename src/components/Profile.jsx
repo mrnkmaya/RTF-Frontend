@@ -40,41 +40,18 @@ const Profile = () => {
     }, [currentUserAccessLevel, isOwnProfile, navigate]);
 
     const canEdit = () => {
-        return isOwnProfile || currentUserAccessLevel === 3; //&&??
+        return isOwnProfile || currentUserAccessLevel >= 2; //&&??
     };
 
     const getEditableFields = () => {
-        const isChairman = currentUserAccessLevel === 3;
-        
-        if (isOwnProfile) {
-            return {
-                commission: true, // Только председатель может менять свою комиссию
-                date_of_birth: true,
-                number_phone: true,
-                email: true,
-                adress: true,
-                status: true // Только председатель может менять свою должность
-            };
-        }
-        
-        if (isOwnProfile == 3) {
-            return {
-                commission: true, // Только председатель может менять комиссии других
-                date_of_birth: false,
-                number_phone: false,
-                email: false,
-                adress: false,
-                status: true // Только председатель может менять должности других
-            };
-        }
         
         return {
-            commission: false,
-            date_of_birth: false,
-            number_phone: false,
-            email: false,
-            adress: false,
-            status: false
+            commission: true, // Все могут менять комиссию
+            date_of_birth: isOwnProfile, // Только свои данные
+            number_phone: isOwnProfile,
+            email: isOwnProfile,
+            adress: isOwnProfile,
+            status: true // Все могут менять должность
         };
     };
 
@@ -118,21 +95,14 @@ const Profile = () => {
             
             const formData = new FormData();
             
-            if (editableFields.commission)
-                formData.append('commission', profileData.commission);
-
-            if (editableFields.adress) {
-                formData.append('adress', profileData.adress);
-            }
-
-            if (editableFields.status) {
-                formData.append('status', profileData.status);
-            }
+            formData.append('commission', profileData.commission || '');
+            formData.append('status', profileData.status || '');
 
             if (isOwnProfile) {
                 formData.append('date_of_birth', profileData.date_of_birth);
                 formData.append('number_phone', profileData.number_phone);
                 formData.append('email', profileData.email);
+                formData.append('adress', profileData.adress);
             }
             
             if (profileData.profile_photo instanceof File) {
