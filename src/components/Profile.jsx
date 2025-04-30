@@ -246,8 +246,9 @@ formData.append('commission', profileData.commission);
                                         })}
                                     />
                                 ) : (
-                                    <p className={DATA_STYLE}>{checkPlaceholder(profileData.date_of_birth)}</p>
+                                    <p className={DATA_STYLE}>{checkPlaceholder(new Date(profileData.date_of_birth).toLocaleDateString())}</p>
                                 )}
+                                {}
                             </div>
                         </div>
                         

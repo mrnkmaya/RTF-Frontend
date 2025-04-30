@@ -65,7 +65,7 @@ const Team = () => {
                                 </div>
                                 <div>
                                     <h3 className={H3_STYLE}>День рождения</h3>
-                                    <p className={DATA_STYLE}>{checkPlaceholder(user.date_of_birth)}</p>
+                                    <p className={DATA_STYLE}>{checkPlaceholder(new Date(user.date_of_birth).toLocaleDateString())}</p>
                                 </div>
                             </div>
                             <div className="flex flex-row gap-6">
