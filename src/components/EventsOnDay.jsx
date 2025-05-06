@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from 'react-router-dom';
 import { useLocation } from 'react-router-dom'; 
 import { format, parse, isSameDay } from 'date-fns';
 import axios from "axios";
@@ -15,6 +16,7 @@ const EventsOnDay = () => {
     const query = new URLSearchParams(useLocation().search);
     const eventDate = parse(query.get('date'), 'yyyy-MM-dd', new Date());
     const curMonth = eventDate.toLocaleString('ru', {month: "long"});
+    const navigate = useNavigate();
 
     const [events, setEvents] = useState([]);
     let thisDayEvents = events.filter(event => isSameDay(new Date(event.date), format(eventDate, 'yyyy-MM-dd')))
@@ -40,7 +42,10 @@ const EventsOnDay = () => {
             width: '328px',
             height: '126px',
             borderRadius: '24px',
-            padding: '0',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '12px'
         },
       };
 
@@ -117,6 +122,14 @@ const EventsOnDay = () => {
         <div className='mx-auto p-6 bg-[#ECF2FF] w-screen h-screen'>
             <div className="bg-[#FFFFFF] rounded-3xl p-6 h-full overflow-y-scroll">
                 <div className="flex items-center mb-[24px]">
+                <button 
+                    onClick={() => navigate('/calendar')}
+                    className="mr-4 text-[#0D062D] hover:text-[#0077EB] transition-colors"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                </button>
                     <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
                     <h1 className={`${textStyleSemibold} text-[40px] leading-[48px] mr-auto`}>Календарь</h1>
                     <button className={`${buttonStyle} w-[260px]`} onClick={openModal}>Создать мероприятие</button>
@@ -127,14 +140,16 @@ const EventsOnDay = () => {
                 contentLabel="Example Modal"
                 style={modalWindowStyle}
                 >
-                <div className="pr-24px">
-                <div className="flex">
-                    <p className={`${textStyleSemibold} text-[15px] leading-[48px]`}>Название:</p>
+                <div className="flex flex-col items-center w-full gap-3">
+                <div className="flex flex-col w-full max-w-[280px]">
                     <input type="text" 
-                    className="w-[280px] h-[34px] rounded bg-[#F1F1F1]"
+                    className="w-[280px] h-[34px] rounded bg-[#F1F1F1] pl-[10px]"
+                    placeholder="Название:"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required></input>
+                </div>
+                <button className={`text-[15px] rounded-[12px] bg-[#00D166] px-[7px] w-[171px] h-[32px] flex items-center justify-center gap-[10px] text-white font-medium hover:bg-[#00C15A] transition-colors`} onClick={createEvent}>Создать мероприятие</button>
                 </div>
                 {/* <div className="flex gap-6 mb-6">
                     <p className={`${textStyleSemibold} text-[40px] leading-[48px]`}>Организатор:</p>
@@ -167,8 +182,7 @@ const EventsOnDay = () => {
                     {children.map((child, index) => <li key={index} className={`${taskStyle}`}>{child}</li>)}
                 </ul> */}
                 {/* <button className={`${buttonStyle} w-[260px]`} onClick={createFile}>Добавить файлы</button> */}
-                <button className={`${buttonStyle} w-[171px] h-[32px]`} onClick={createEvent}>Создать мероприятие</button>
-                </div>
+                
             </Modal>
             <div id='success' className="hidden w-[610px] h-fit bg-[#5C6373] z-50 
             absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2

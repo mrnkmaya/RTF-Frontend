@@ -340,10 +340,15 @@ const Profile = () => {
     <Link 
         key={event.id} 
         to={`/event?id=${event.id}`} 
-        className="bg-[#CCE8FF] p-4 rounded-xl hover:bg-[#b3d9ff] transition-colors"
+        className="flex flex-col bg-[#CCE8FF] p-3 rounded-xl hover:bg-[#b3d9ff] transition-colors h-[150px]"
     >
         <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">{event.title}</h3>
-        <p className="text-[#0D062D] text-opacity-70 text-sm">{event.description}</p>
+        
+        <p className="text-[#0D062D] text-opacity-70 text-[14px] flex-grow overflow-hidden break-words">
+                            <span className="line-clamp-2">
+                                {event.description}
+                            </span>
+                        </p>
         <p className="text-[#0D062D] text-opacity-50 text-xs mt-2">
             {new Date(event.date).toLocaleDateString()}
         </p>

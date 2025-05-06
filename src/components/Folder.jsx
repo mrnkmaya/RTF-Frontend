@@ -116,10 +116,10 @@ const Folder = () => {
             setProject(updatedProject.data);
         } catch (error) {
             console.error('Ошибка создания файла:', error);
-            setMessage({
-                text: error.response?.data?.message || 'Ошибка создания файла',
-                type: 'error'
-            });
+            // setMessage({
+            //     text: error.response?.data?.message || 'Ошибка создания файла',
+            //     type: 'error'
+            // });
         } finally {
             setLoading(false);
         }

@@ -20,12 +20,39 @@ const modalWindowStyle = {
         bottom: 'auto',
         marginRight: '-50%',
         transform: 'translate(-50%, -50%)',
-        backgroundColor: '#CCE8FF',
-        width: '75%',
-        height: '75%',
+        backgroundColor: '#FFFFFF',
+        width: '328px',
+        height: '126px',
         borderRadius: '24px',
-        padding: '32px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '12px'
     },
+  };
+
+  const Notification = ({ message, onClose }) => {
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }, [onClose]);
+  
+    return (
+      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
+                     w-[600px] h-[60px] bg-[#DCF0DD] z-50 rounded-[15px] 
+                     border-4 border-[#549D73] flex items-center justify-center
+                     gap-[10px] p-4 shadow-lg animate-fadeIn">
+        <svg className="w-6 h-6 text-[#549D73]" viewBox="0 0 24 24" fill="none">
+          <path d="M5 13L9 17L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <p className="font-gilroy_heavy text-[#0D062D] text-[24px] leading-[30px]">
+          {message}
+        </p>
+      </div>
+    );
   };
 
 const Events = () => {
@@ -36,6 +63,7 @@ const Events = () => {
 
     const [title, setTitle] = useState('');
     const [description, setDesc] = useState('');
+    const [showSuccess, setShowSuccess] = useState(false);
 
     useEffect(() => {
         if(localStorage.getItem('access_token') === null){                   
@@ -103,7 +131,7 @@ const Events = () => {
     
         // Проверка обязательных полей
         if (!title.trim()) {
-            alert('Пожалуйста, укажите название мероприятия');
+            console.log('Пожалуйста, укажите название мероприятия');
             return;
         }
     
@@ -129,9 +157,7 @@ const Events = () => {
             });
     
             // Обработка успешного создания
-            const successMessage = document.getElementById('success');
-            successMessage.classList.remove('hidden');
-            setIsOpen(false);
+            
             
             // Обновление списка мероприятий
             const updatedEvents = await axios.get(`${BASE_URL}/api/events/`, {
@@ -140,7 +166,8 @@ const Events = () => {
                 }
             });
             setEvents(updatedEvents.data);
-    
+            setShowSuccess(true);
+            setIsOpen(false);
             // Очистка формы
             setTitle('');
             setDesc('');
@@ -161,20 +188,22 @@ const Events = () => {
                     <button className={`${buttonStyle} w-[260px]`} onClick={openModal}>Создать мероприятие</button>
                 </div>
                 <Modal
-                    isOpen={modalIsOpen}
-                    onRequestClose={closeModal}
-                    contentLabel="Example Modal"
-                    style={modalWindowStyle}
-                    appElement={document.getElementById('root')} 
+                isOpen={modalIsOpen}
+                onRequestClose={closeModal}
+                contentLabel="Example Modal"
+                style={modalWindowStyle}
                 >
-                    <div className="flex gap-6 mb-6">
-                        <p className={`${textStyleSemibold} text-[40px] leading-[48px]`}>Название:</p>
-                        <input type="text" 
-                        className="w-[600px] rounded pl-[10px]"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        required></input>
-                    </div>
+                <div className="flex flex-col items-center w-full gap-3">
+                <div className="flex flex-col w-full max-w-[280px]">
+                    <input type="text" 
+                    className="w-[280px] h-[34px] rounded bg-[#F1F1F1] pl-[10px]"
+                    placeholder="Название:"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required></input>
+                </div>
+                <button className={`text-[15px] rounded-[12px] bg-[#00D166] px-[7px] w-[171px] h-[32px] flex items-center justify-center gap-[10px] text-white font-medium hover:bg-[#00C15A] transition-colors`} onClick={createEvent}>Создать мероприятие</button>
+                </div>
                     {/* <div className="flex gap-6 mb-6">
                         <p className={`${textStyleSemibold} text-[40px] leading-[48px]`}>Организатор:</p>
                         <input type="text" 
@@ -200,18 +229,14 @@ const Events = () => {
                         {children.map((child, index) => <li key={index} className={`${taskStyle}`}>{child}</li>)}
                     </ul> */}
                     {/* <button className={`${buttonStyle} w-[260px]`} onClick={() => {setFilesModalIsOpen(true)}}>Добавить файлы</button> */}
-                    <button className={`${buttonStyle} w-[260px]`} onClick={createEvent}>Создать мероприятие</button>
+                    
                 </Modal>
-                <div id='success' className="hidden w-[610px] h-fit bg-[#5C6373] z-50
-                absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2
-                rounded-3xl p-6 text-center">
-                    <p className={`font-gilroy_heavy text-white w-fit text-[32px] mx-auto mb-12`}>Мероприятие успешно создано!</p>
-                    <button onClick={() => {
-                        const successMessage = document.getElementById('success');
-                        successMessage.classList.add('hidden');
-                        setIsOpen(false);
-                    }} className={`${buttonStyle}`}>Подтвердить</button>
-                </div>
+                {showSuccess && (
+                <Notification 
+                    message="Мероприятие успешно создано!" 
+                    onClose={() => setShowSuccess(false)} 
+                />
+            )}
                 <div className="flex justify-start flex-wrap">
                     {events.map((event) => {
                         if (!event.is_past) {

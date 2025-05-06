@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from "axios";
 import { format, parse } from 'date-fns';
 import Modal from 'react-modal';
@@ -40,6 +41,7 @@ const Event = () => {
     const [event, setEvent] = useState([]);
     const [users, setUsers] = useState([]);
     const [project, setProject] = useState([]);
+    const navigate = useNavigate();
 
     const [isEditing, setIsEditing] = useState(false);
     const [isFolderOpen, setIsFolderOpen] = useState(false);
@@ -224,6 +226,14 @@ const Event = () => {
         <div className='mx-auto p-6 bg-[#ECF2FF] w-screen h-auto'>
             <div className="bg-[#FFFFFF] rounded-3xl p-6 h-auto overflow-y-auto overflow-x-hidden">
                 <div className="flex items-center mb-[24px]">
+                <button 
+        onClick={() => navigate('/events')}
+        className="mr-4 text-[#0D062D] hover:text-[#0077EB] transition-colors"
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+    </button>
                     <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
                     <h1 className={`${textStyleSemibold} text-[40px] leading-[48px] mr-auto`}>Мероприятия</h1>
                     {event.is_past
@@ -317,9 +327,9 @@ const Event = () => {
                     ? <input className="mb-6 bg-[#F1F1F1] h-[40px] rounded pl-[10px]" type='date' onChange={(e) => {setEvent({...event, date: e.target.value })}}/>
                     : <p className="font-gilroy_bold text-[24px] text-[#0D062D] leading-[30px] mb-[12px]">{formateDate(event.date)}</p>
                     }
-                    <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Описание</p>
+                    <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50 `}>Описание</p>
                     {isEditing
-                    ? <input className="mb-6 bg-[#F1F1F1] h-[40px] rounded pl-[10px]" type="text" value={`${event.description}`} onChange={(e) => {setEvent({...event, description: e.target.value })}}/>
+                    ? <input className="mb-6 bg-[#F1F1F1] h-[40px] rounded pl-[10px]" type="textarea" value={`${event.description}`} onChange={(e) => {setEvent({...event, description: e.target.value })}}/>
                     : <p className="font-gilroy_bold text-[24px] text-[#0D062D] leading-[30px] mb-[12px]">{event.description}</p>
                     }
                     <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Организаторы</p>
@@ -327,7 +337,7 @@ const Event = () => {
                     ?
                     <div>
                         {event.organizers?.map((org) => {
-                            return <p className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[org]}</p>
+                            return <p key={org} className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[org]}</p>
                         })}
                         <select 
                             multiple
@@ -353,13 +363,13 @@ const Event = () => {
                     </div>
                     :
                     event.organizers?.map((org) => {
-                        return <p className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[org]}</p>
+                        return <p key={org} className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[org]}</p>
                     })
                     }
                     <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Папки</p>
                     <div className="flex flex-col">
                         {event.projects?.map((proId) => {
-                            return <Link to={`/folder?projid=${proId}&eventid=${event.id}`} className="bg-[#CCE8FF] w-[200px] h-fit rounded-xl px-[12px] py-[8px] text-[#0D062D] font-gilroy_semibold font-[20px] leading-[25px] mb-3"
+                            return <Link key={proId} to={`/folder?projid=${proId}&eventid=${event.id}`} className="bg-[#CCE8FF] w-[200px] h-fit rounded-xl px-[12px] py-[8px] text-[#0D062D] font-gilroy_semibold font-[20px] leading-[25px] mb-3"
                             onClick={() => {setIsFolderOpen(true)}}>{projects[proId]?.title}</Link>
                         })
                         }

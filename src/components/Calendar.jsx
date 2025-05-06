@@ -62,7 +62,7 @@ const Calendar = () => {
     // console.log(events);
     //h-screen
     return (
-    <div className='mx-auto p-6 bg-[#ECF2FF] w-screen min-h-full'>
+    <div className='mx-auto p-6 bg-[#ECF2FF] w-screen h-screen'>
         <div className="bg-[#FFFFFF] rounded-3xl p-6 h-auto">
             <div className="flex items-center mb-3">
                 <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
