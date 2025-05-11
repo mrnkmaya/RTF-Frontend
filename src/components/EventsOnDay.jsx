@@ -10,7 +10,7 @@ import { BASE_URL } from "./Globals";
 const buttonStyle = 'bg-[#0077EB] w-[160px] h-[40px] rounded-xl font-gilroy_semibold text-white text-xl p-2';
 const textStyleSemibold = 'font-gilroy_semibold text-[#0d062d]';
 const textStyleRegular = 'font-gilroy_regular text-black';
-const EVENT_PLACEHOLDER_STYLE = 'w-[412px] h-[244px] rounded-3xl bg-[#36536A] p-4 mb-[12px] mr-[12px]';
+const EVENT_PLACEHOLDER_STYLE = 'w-[412px] h-[244px] rounded-3xl bg-[#DCF0DD] p-4 mb-[12px] mr-[12px]';
 
 const EventsOnDay = () => {
     const query = new URLSearchParams(useLocation().search);
@@ -29,6 +29,7 @@ const EventsOnDay = () => {
     const [description, setDesc] = useState('');
     const [date, setDate] = useState('');
     const [organizers, setOrganizers] = useState('');
+    const [showSuccess, setShowSuccess] = useState(false);
 
     const modalWindowStyle = {
         content: {
@@ -47,6 +48,30 @@ const EventsOnDay = () => {
             alignItems: 'center',
             gap: '12px'
         },
+    };
+
+    const Notification = ({ message, onClose }) => {
+        useEffect(() => {
+          const timer = setTimeout(() => {
+            onClose();
+          }, 2000);
+          
+          return () => clearTimeout(timer);
+        }, [onClose]);
+      
+        return (
+          <div className="absolute top-3/4 left-1/2 -translate-x-1/2 z-50
+                         w-[600px] h-[60px] bg-[#DCF0DD] z-50 rounded-[15px] 
+                         border-4 border-[#549D73] flex items-center justify-center
+                         gap-[10px] p-4 shadow-lg animate-fadeIn">
+            <svg className="w-6 h-6 text-[#549D73]" viewBox="0 0 24 24" fill="none">
+              <path d="M5 13L9 17L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <p className="font-gilroy_heavy text-[#0D062D] text-[24px] leading-[30px]">
+              {message}
+            </p>
+          </div>
+        );
       };
 
     function openModal() {
@@ -57,46 +82,65 @@ const EventsOnDay = () => {
         setIsOpen(false);
     }
 
-    function createFile() {
-        const data = { 
-            doc_type: 'doc', 
-            title: 'ThisIsTitle', 
-            custom_name: 'ThisIsCustomName' 
-        };
-        axios.post(`${BASE_URL}/projects/projects/10/create_google_document/`, data, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-            }
-        } ,{ withCredentials: true })
-        .then(response => {})
-        .catch(error => { console.error('There was an error!', error); });
-    }
+    // function createFile() {
+    //     const data = { 
+    //         doc_type: 'doc', 
+    //         title: 'ThisIsTitle', 
+    //         custom_name: 'ThisIsCustomName' 
+    //     };
+    //     axios.post(`${BASE_URL}/projects/10/create_google_service/`, data, {
+    //         headers: {
+    //             'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+    //         }
+    //     } ,{ withCredentials: true })
+    //     .then(response => {})
+    //     .catch(error => { console.error('There was an error!', error); });
+    // }
 
     const createEvent = async (e) => {
+        // Проверяем, что название мероприятия указано
+        if (!title.trim()) {
+            alert('Пожалуйста, укажите название мероприятия');
+            return;
+        }    
+    
         const data = {
-            id: 193,
             title: title,
-            description: description,
-            date: format(new Date(), 'yyyy-MM-dd'),
-            organizers: [localStorage.getItem('current_profile_id')],
-            files: null,
-            tasks: '',
-            participants: [1],
-            projects: [],
-            is_past: false
+            description: description || "",  
+            date: format(eventDate, 'yyyy-MM-dd'),  // Используем дату из календаря
+            participants: [],  
+            projects: [],  
+            is_past: false,  
         };
-
-        axios.post(`${BASE_URL}/api/events/`, data, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-            }
-        })
-        .then(response => {
-            const successMessage = document.getElementById('success');
-            successMessage.classList.remove('hidden');
-        })
-    }
+    
+        try {
+            const response = await axios.post(`${BASE_URL}/api/events/`, data, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            });
+    
+            // Обновляем список мероприятий
+            const updatedEvents = await axios.get(`${BASE_URL}/api/events/`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            });
+            setEvents(updatedEvents.data);
+    
+            // Показываем уведомление и закрываем модальное окно
+            setShowSuccess(true);
+            setIsOpen(false);
+            // Очищаем форму
+            setTitle('');
+            setDesc('');
+    
+        } catch (error) {
+            console.error('Ошибка при создании мероприятия:', error.response?.data || error.message);
+            alert(`Ошибка: ${error.response?.data?.detail || 'Не удалось создать мероприятие'}`);
+        }
+    };
 
     useEffect(() => {
         if(localStorage.getItem('access_token') === null){                   
@@ -184,16 +228,12 @@ const EventsOnDay = () => {
                 {/* <button className={`${buttonStyle} w-[260px]`} onClick={createFile}>Добавить файлы</button> */}
                 
             </Modal>
-            <div id='success' className="hidden w-[610px] h-fit bg-[#5C6373] z-50 
-            absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2
-            rounded-3xl p-6 text-center">
-                <p className={`font-gilroy_heavy text-white w-fit text-[32px] mx-auto mb-12`}>Мероприятие успешно создано!</p>
-                <button onClick={() => {
-                    const successMessage = document.getElementById('success');
-                    successMessage.classList.add('hidden');
-                    setIsOpen(false);
-                }} className={`${buttonStyle}`}>Подтвердить</button>
-            </div>
+            {showSuccess && (
+                <Notification 
+                    message="Мероприятие успешно создано!" 
+                    onClose={() => setShowSuccess(false)} 
+                />
+                )}
                 <h2 className="text-[#0d062d] font-gilroy_heavy text-[48px] leading-[61px]">
                     <span className="text-[100px] leading-[127px] mr-[16px]">{`${format(eventDate, 'dd')}`}</span> {`${curMonth.slice(0, curMonth.length-1)}я`}
                 </h2>
@@ -205,7 +245,7 @@ const EventsOnDay = () => {
                                 <p className={`${textStyleRegular} text-[20px] leading-[24px] mb-[51px] text-[#0D062D] truncate`}>{event.description}</p>
                                 <p className={`${textStyleSemibold} text-[20px] leading-[24px] mb-1 text-[#0D062D]`}>Организатор</p>
                                 <div className="flex">
-                                    <img alt='Аватарка организатора' width='23' height='23' className="rounded-[50%] mr-1"/>
+                                    {/* <img alt='Аватарка организатора' width='23' height='23' className="rounded-[50%] mr-1" src=''/> */}
                                     <p className={`${textStyleSemibold} `}>{event.organizers[0]}</p>
                                 </div>
                             </div>

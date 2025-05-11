@@ -38,6 +38,7 @@ const Folder = () => {
     const [filesModalIsOpen, setFilesModalIsOpen] = useState(false);
     const [message, setMessage] = useState({ text: '', type: '' });
     const [loading, setLoading] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
         if (!localStorage.getItem('access_token')) {
@@ -50,14 +51,14 @@ const Folder = () => {
                 setLoading(true);
                 
                 // Исправленные URL запросов
-                const eventResponse = await axios.get(`${BASE_URL}/api/events/${eventId}/`, {
+                const eventResponse = await axios.get(`${BASE_URL}/api/event/${eventId}/`, {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     }
                 });
                 setEvent(eventResponse.data);
 
-                const projectResponse = await axios.get(`${BASE_URL}/api/projects/${projId}/`, {
+                const projectResponse = await axios.get(`${BASE_URL}/projects/${projId}/`, {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     }
@@ -88,7 +89,7 @@ const Folder = () => {
         try {
             setLoading(true);
             const response = await axios.post(
-                `${BASE_URL}/api/projects/${projId}/create-document/`, 
+                `${BASE_URL}/projects/${projId}/create_google_service/`, 
                 {
                     doc_type: docType,
                     title: fileName,
@@ -108,7 +109,7 @@ const Folder = () => {
             closeModal();
             
             // Обновляем данные проекта после создания файла
-            const updatedProject = await axios.get(`${BASE_URL}/api/projects/${projId}/`, {
+            const updatedProject = await axios.get(`${BASE_URL}/projects/${projId}/`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                 }

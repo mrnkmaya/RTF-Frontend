@@ -166,16 +166,28 @@ const Event = () => {
     }
 
     function createFile(type, title, custom_name) {
+        // Получаем первый проект из списка (или другой логически правильный выбор)
+        const projectId = event.projects?.length > 0 ? event.projects[0] : null;
+        
+        if (!projectId) {
+            alert('Нет доступных проектов для создания документа');
+            return;
+        }
+    
         const data = { 
             doc_type: type, 
             title: title, 
             custom_name: custom_name
         };
-        axios.post(`${BASE_URL}/projects/10/create_google_document/`, data, {
+        
+        // Используем правильный endpoint согласно бэкенду
+        axios.post(`${BASE_URL}/projects/${projectId}/create_google_service/`, data, {
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-            }
-        } ,{ withCredentials: true })
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json'
+            },
+            withCredentials: true
+        })
         .then(response => {
             const message = document.getElementById('succes_file');
             message.classList.remove('hidden');
@@ -185,7 +197,7 @@ const Event = () => {
             }, 3000);
         })
         .catch(error => { 
-            console.error('There was an error!', error);
+            console.error('Error creating Google service:', error);
             const message = document.getElementById('error_file');
             message.classList.remove('hidden');
             setTimeout(() => {
@@ -371,6 +383,14 @@ const Event = () => {
                         {event.projects?.map((proId) => {
                             return <Link key={proId} to={`/folder?projid=${proId}&eventid=${event.id}`} className="bg-[#CCE8FF] w-[200px] h-fit rounded-xl px-[12px] py-[8px] text-[#0D062D] font-gilroy_semibold font-[20px] leading-[25px] mb-3"
                             onClick={() => {setIsFolderOpen(true)}}>{projects[proId]?.title}</Link>
+                        //     <div 
+                        //     className="bg-[#CCE8FF] w-[200px] h-fit rounded-xl px-[12px] py-[8px] text-[#0D062D] font-gilroy_semibold font-[20px] leading-[25px] mb-3"  
+                        //     onClick={() => setIsFolderOpen(true)}
+                        //   >
+                        //     {projects[proId]?.title}
+                        //   </div>
+                            // <Link key={proId} to={`/folder?projid=${proId}&eventid=${event.id}`} className="bg-[#CCE8FF] w-[200px] h-fit rounded-xl px-[12px] py-[8px] text-[#0D062D] font-gilroy_semibold font-[20px] leading-[25px] mb-3"
+                            // onClick={() => {setIsFolderOpen(true)}}>{projects[proId]?.title}</Link>
                         })
                         }
                     </div>

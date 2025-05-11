@@ -41,7 +41,7 @@ const modalWindowStyle = {
     }, [onClose]);
   
     return (
-      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
+      <div className="absolute top-3/4 left-1/2 -translate-x-1/2 z-50
                      w-[600px] h-[60px] bg-[#DCF0DD] z-50 rounded-[15px] 
                      border-4 border-[#549D73] flex items-center justify-center
                      gap-[10px] p-4 shadow-lg animate-fadeIn">

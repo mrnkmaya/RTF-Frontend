@@ -19,6 +19,8 @@ const Profile = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const [tasks, setTasks] = useState([]);
+    const [activeTab, setActiveTab] = useState('events');
 
     const currentUserAccessLevel = parseInt(localStorage.getItem('access_level') || '1');
     const currentUserProfileId = localStorage.getItem('profile_id');
@@ -70,9 +72,19 @@ const Profile = () => {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     }
                 });
+
+                const tasksResponse = await axios.get(`${BASE_URL}/api/tasks/`, {
+                    params: {
+                        user_id: viewedProfileId // Параметр для фильтрации задач по пользователю
+                    },
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
                 
                 setProfileData(response.data.profile);
                 setEvents(response.data.events || []);
+                setTasks(tasksResponse.data || []);
             } catch (error) {
                 console.error("Ошибка загрузки данных:", error);
                 if (error.response?.status === 403) {
@@ -88,49 +100,45 @@ const Profile = () => {
 
     const handleSave = async () => {
         setIsLoading(true);
-        try {            
+        try {
             const endpoint = isOwnProfile 
                 ? `${BASE_URL}/api/profile/${viewedProfileId}/`
                 : `${BASE_URL}/api/profile_view/${viewedProfileId}/`;
             
+            const payload = {
+                status: profileData.status || null,
+                commission: profileData.commission || null,
+                ...(isOwnProfile && {
+                    date_of_birth: profileData.date_of_birth || null,
+                    number_phone: profileData.number_phone || null,
+                    email: profileData.email || null,
+                    adress: profileData.adress || null
+                })
+            };
+    
             const formData = new FormData();
-            
-            formData.append('commission', profileData.commission || '');
-            formData.append('status', profileData.status || '');
-
-            if (isOwnProfile) {
-                formData.append('date_of_birth', profileData.date_of_birth);
-                formData.append('number_phone', profileData.number_phone);
-                formData.append('email', profileData.email);
-                formData.append('adress', profileData.adress);
-            }
-            
+            Object.entries(payload).forEach(([key, value]) => {
+                if (value !== null && value !== undefined) {
+                    formData.append(key, value);
+                }
+            });
+    
             if (profileData.profile_photo instanceof File) {
                 formData.append('profile_photo', profileData.profile_photo);
             }
     
-            await axios.put(
-                endpoint,
-                formData,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-                        'Content-Type': 'multipart/form-data'
-                    }
-                }
-            );
-    
-            setIsEditing(false);
-            const { data } = await axios.get(endpoint, {
+            const response = await axios.put(endpoint, formData, {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                    'Content-Type': 'multipart/form-data'
                 }
             });
-
-            setProfileData(data.profile);
-            
+    
+            setProfileData(response.data);
+            setIsEditing(false);
         } catch (error) {
             console.error("Ошибка сохранения:", error.response?.data || error.message);
+            alert(`Ошибка сохранения: ${error.response?.data?.status?.[0] || error.message}`);
         } finally {
             setIsLoading(false);
         }
@@ -218,6 +226,7 @@ const Profile = () => {
                                         status: e.target.value
                                     })}
                                 >
+                                    <option value="">Не указано</option>
                                     <option value="Председатель">Председатель</option>
                                     <option value="Заместитель председателя">Заместитель председателя</option>
                                     <option value="Член комиссии">Член комиссии</option>
@@ -329,31 +338,44 @@ const Profile = () => {
                 <div className="w-[600px] h-auto bg-[#FFFFFF] rounded-3xl p-6">
                     <div className="flex items-center mb-6">
                         <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
-                        <h2 className="font-gilroy_semibold text-[#0D062D] text-[32px] leading-[38px]">
-                            {isOwnProfile ? 'Мои мероприятия' : 'Мероприятия пользователя'}
-                        </h2>
+                        <div className="flex rounded-lg p-1 gap-2">
+                        <button
+                                className={`font-gilroy_semibold text-[#0D062D] text-[32px] leading-[38px] ${activeTab === 'tasks' ? '' : 'font-gilroy_semibold text-[#929292] text-[32px] leading-[38px]'}`}
+                                onClick={() => setActiveTab('tasks')}
+                            >
+                                Задачи
+                            </button>
+                            <button
+                                className={`font-gilroy_semibold text-[#0D062D] text-[32px] leading-[38px] ${activeTab === 'events' ?  '' : 'font-gilroy_semibold text-[#929292] text-[32px] leading-[38px]'}`}
+                                onClick={() => setActiveTab('events')}
+                            >
+                                Мероприятия
+                            </button>
+                            
+                        </div>
                     </div>
 
-                    {events.length > 0 ? (
+                    {activeTab === 'events' ? (
+                    events.length > 0 ? (
                         <div className="grid grid-cols-3 gap-6">
                             {events.map(event => (
-    <Link 
-        key={event.id} 
-        to={`/event?id=${event.id}`} 
-        className="flex flex-col bg-[#CCE8FF] p-3 rounded-xl hover:bg-[#b3d9ff] transition-colors h-[150px]"
-    >
-        <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">{event.title}</h3>
-        
-        <p className="text-[#0D062D] text-opacity-70 text-[14px] flex-grow overflow-hidden break-words">
-                            <span className="line-clamp-2">
-                                {event.description}
-                            </span>
-                        </p>
-        <p className="text-[#0D062D] text-opacity-50 text-xs mt-2">
-            {new Date(event.date).toLocaleDateString()}
-        </p>
-    </Link>
-))}
+                            <Link 
+                                key={event.id} 
+                                to={`/event?id=${event.id}`} 
+                                className="flex flex-col bg-[#CCE8FF] p-3 rounded-xl hover:bg-[#b3d9ff] transition-colors h-[150px]"
+                            >
+                                <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">{event.title}</h3>
+                                
+                                <p className="text-[#0D062D] text-opacity-70 text-[14px] flex-grow overflow-hidden break-words">
+                                                    <span className="line-clamp-2">
+                                                        {event.description}
+                                                    </span>
+                                                </p>
+                                <p className="text-[#0D062D] text-opacity-50 text-xs mt-2">
+                                    {new Date(event.date).toLocaleDateString()}
+                                </p>
+                            </Link>
+                        ))}
                         </div>
                     ) : (
                         <p className="text-[#0D062D] text-opacity-50">
@@ -361,11 +383,51 @@ const Profile = () => {
                                 ? 'У вас пока нет мероприятий' 
                                 : 'У пользователя нет мероприятий'}
                         </p>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-};
+                    )
+                ): (
+                    tasks.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-6">
+                            {tasks.map(task => (
+                                <div 
+                                    key={task.id} 
+                                    className="flex flex-col bg-[#E2F7E2] p-3 rounded-xl h-[150px]"
+                                >
+                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">
+                                        {task.title || 'Без названия'}
+                                    </h3>
+                                    <p className="text-[#0D062D] text-opacity-70 text-[14px] flex-grow overflow-hidden break-words">
+                                        <span className="line-clamp-2">
+                                            {task.description || 'Описание отсутствует'}
+                                        </span>
+                                    </p>
+                                    <div className="flex justify-between items-center mt-2">
+                                        <span className={`text-xs px-2 py-1 rounded ${
+                                            task.status === 'completed' 
+                                                ? 'bg-green-100 text-green-800' 
+                                                : 'bg-yellow-100 text-yellow-800'
+                                        }`}>
+                                            {task.status === 'completed' ? 'Завершено' : 'В работе'}
+                                        </span>
+                                        {task.deadline && (
+                                            <p className="text-[#0D062D] text-opacity-50 text-xs">
+                                                {new Date(task.deadline).toLocaleDateString()}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-[#0D062D] text-opacity-50">
+                            {isOwnProfile 
+                                ? 'У вас пока нет задач' 
+                                : 'У пользователя нет задач'}
+                        </p>
+                    )
+                )}
+            </div>
+            
+        )} </div>
+    )}
 
 export default Profile;
