@@ -335,7 +335,7 @@ const Profile = () => {
 
             {/* Блок мероприятий */}
             {currentUserAccessLevel >= 2 && (
-                <div className="w-[600px] h-auto bg-[#FFFFFF] rounded-3xl p-6">
+                <div className="w-[956px] h-auto bg-[#FFFFFF] rounded-3xl p-6">
                     <div className="flex items-center mb-6">
                         <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
                         <div className="flex rounded-lg p-1 gap-2">
@@ -386,36 +386,108 @@ const Profile = () => {
                     )
                 ): (
                     tasks.length > 0 ? (
-                        <div className="grid grid-cols-3 gap-6">
-                            {tasks.map(task => (
-                                <div 
-                                    key={task.id} 
-                                    className="flex flex-col bg-[#E2F7E2] p-3 rounded-xl h-[150px]"
-                                >
-                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">
+                        <div className="grid grid-cols-3 gap-[23px]">
+                            {/* Колонка "Не начато" */}
+                            <div className="bg-[#F4F4F4] p-[10px] rounded-lg w-[287px]">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="bg-[#FF7D56] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
+                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">Не начато</h3>
+                                </div>
+                                {tasks
+                                    .filter(task => task.status === 2)
+                                    .map(task => (
+                                    <div key={task.id} className="flex flex-col bg-[#E2F7E2] p-3 rounded-xl mb-3 h-[150px]">
+                                        <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">
                                         {task.title || 'Без названия'}
-                                    </h3>
-                                    <p className="text-[#0D062D] text-opacity-70 text-[14px] flex-grow overflow-hidden break-words">
+                                        </h3>
+                                        <p className="text-[#0D062D] text-opacity-70 text-[14px] flex-grow overflow-hidden break-words">
                                         <span className="line-clamp-2">
                                             {task.description || 'Описание отсутствует'}
                                         </span>
-                                    </p>
-                                    <div className="flex justify-between items-center mt-2">
-                                        <span className={`text-xs px-2 py-1 rounded ${
-                                            task.status === 'completed' 
-                                                ? 'bg-green-100 text-green-800' 
-                                                : 'bg-yellow-100 text-yellow-800'
-                                        }`}>
-                                            {task.status === 'completed' ? 'Завершено' : 'В работе'}
-                                        </span>
+                                        </p>
+                                        <div className="flex justify-between items-center mt-2">
                                         {task.deadline && (
                                             <p className="text-[#0D062D] text-opacity-50 text-xs">
-                                                {new Date(task.deadline).toLocaleDateString()}
+                                            {new Date(task.deadline).toLocaleDateString()}
                                             </p>
                                         )}
+                                        </div>
+                                    </div>
+                                    ))}
+                                {tasks.filter(task => task.status === 2).length === 0 && (
+                                    <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
+                                )}
+                            </div>
+
+                            {/* Колонка "В работе" */}
+                            <div className="bg-[#F4F4F4] p-[10px] rounded-lg w-[287px]">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="bg-[#FFDF56] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
+                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">В работе</h3>
+                                </div>
+                            {tasks
+                                .filter(task => task.status === 1)
+                                .map(task => (
+                                <div key={task.id} className="flex flex-col bg-[#E2F7E2] p-3 rounded-xl mb-3 h-[150px]">
+                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">
+                                    {task.title || 'Без названия'}
+                                    </h3>
+                                    <p className="text-[#0D062D] text-opacity-70 text-[14px] flex-grow overflow-hidden break-words">
+                                    <span className="line-clamp-2">
+                                        {task.description || 'Описание отсутствует'}
+                                    </span>
+                                    </p>
+                                    <div className="flex justify-between items-center mt-2">
+                                    <span className="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-800">
+                                        В работе
+                                    </span>
+                                    {task.deadline && (
+                                        <p className="text-[#0D062D] text-opacity-50 text-xs">
+                                        {new Date(task.deadline).toLocaleDateString()}
+                                        </p>
+                                    )}
                                     </div>
                                 </div>
-                            ))}
+                                ))}
+                            {tasks.filter(task => task.status === 1).length === 0 && (
+                                <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
+                            )}
+                            </div>
+
+                            {/* Колонка "Завершено" */}
+                            <div className="bg-[#F4F4F4] p-[10px] rounded-lg w-[287px]">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="bg-[#40D033] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
+                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">Завершено</h3>
+                                </div>
+                            {tasks
+                                .filter(task => task.status === 3)
+                                .map(task => (
+                                <div key={task.id} className="flex flex-col bg-[#E2F7E2] p-3 rounded-xl mb-3 h-[150px]">
+                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">
+                                    {task.title || 'Без названия'}
+                                    </h3>
+                                    <p className="text-[#0D062D] text-opacity-70 text-[14px] flex-grow overflow-hidden break-words">
+                                    <span className="line-clamp-2">
+                                        {task.description || 'Описание отсутствует'}
+                                    </span>
+                                    </p>
+                                    <div className="flex justify-between items-center mt-2">
+                                    <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-800">
+                                        Завершено
+                                    </span>
+                                    {task.deadline && (
+                                        <p className="text-[#0D062D] text-opacity-50 text-xs">
+                                        {new Date(task.deadline).toLocaleDateString()}
+                                        </p>
+                                    )}
+                                    </div>
+                                </div>
+                                ))}
+                            {tasks.filter(task => task.status === 3).length === 0 && (
+                                <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
+                            )}
+                            </div>
                         </div>
                     ) : (
                         <p className="text-[#0D062D] text-opacity-50">
