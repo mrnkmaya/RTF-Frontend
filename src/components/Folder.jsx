@@ -12,20 +12,22 @@ const textStyleSemibold = 'font-gilroy_semibold text-[#0D062D]';
 
 const filesModalWindowStyle = {
   content: {
-    top: '50%',
-    left: '50%',
+    top: '362px',
+    left: '496px',
     right: 'auto',
     bottom: 'auto',
-    marginRight: '-50%',
-    transform: 'translate(-50%, -50%)',
-    backgroundColor: '#ECF2FF',
-    width: '610px',
-    height: '347px',
+    width: '448px',
+    height: '176px',
     borderRadius: '24px',
-    border: '2px solid #FFFFFF',
-    padding: '24px 32px',
+    padding: '16px',
+    gap: '12px',
+    backgroundColor: '#FFFFFF',
+    border: 'none',
+    boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)'
   },
 };
+
+const greenButtonStyle = 'bg-[#00D166] w-[140px] h-[36px] rounded-[12px] flex items-center justify-center mx-auto font-gilroy_medium text-[16px] leading-[100%] tracking-[0px] text-white px-4';
 
 const Folder = () => {
     const folderData = Object.fromEntries(new URLSearchParams(useLocation().search));
@@ -115,6 +117,7 @@ const Folder = () => {
                 text: 'Файл успешно создан',
                 type: 'success'
             });
+            setTimeout(() => setMessage({ text: '', type: '' }), 3000);
             closeModal();
             
             // Обновляем данные проекта после создания файла
@@ -173,16 +176,44 @@ const Folder = () => {
                         <div className="flex flex-col mb-3">
                             {project.files?.length > 0 ? (
                                 project.files.map((file) => (
-                                    <a 
-                                        key={file.id}
-                                        href={file.file_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="bg-[#1F4466] w-[200px] h-fit rounded-xl px-[12px] py-[8px] 
-                                        text-white font-gilroy_semibold text-[20px] leading-[25px] mb-1 text-center"
-                                    >
-                                        {file.file_name}
-                                    </a>
+                                    <div key={file.id} className="flex items-center mb-1">
+                                        <a 
+                                            href={file.file_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="bg-[#1F4466] w-[200px] h-fit rounded-xl px-[12px] py-[8px] text-white font-gilroy_semibold text-[20px] leading-[25px] text-center mr-2"
+                                        >
+                                            {file.file_name}
+                                        </a>
+                                        <button
+                                            className="text-red-500 hover:text-red-700 text-xl ml-2"
+                                            onClick={async () => {
+                                                if (window.confirm('Удалить файл?')) {
+                                                    try {
+                                                        setLoading(true);
+                                                        await axios.delete(`${BASE_URL}/api/project_file/${file.id}/`, {
+                                                            headers: {
+                                                                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                                                            }
+                                                        });
+                                                        // Обновить список файлов
+                                                        const updatedProject = await axios.get(`${BASE_URL}/projects/${projId}/`, {
+                                                            headers: {
+                                                                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                                                            }
+                                                        });
+                                                        setProject(updatedProject.data);
+                                                    } catch (error) {
+                                                        alert('Ошибка при удалении файла');
+                                                    } finally {
+                                                        setLoading(false);
+                                                    }
+                                                }
+                                            }}
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
                                 ))
                             ) : (
                                 <p className="text-gray-500">Нет файлов</p>
@@ -203,16 +234,20 @@ const Folder = () => {
                             style={filesModalWindowStyle}
                             ariaHideApp={false}
                         >
-                            <h2 className={`font-gilroy_bold text-[#0D062D] text-[32px] leading-[39px] text-center mb-[41px]`}>
-                                Создать Google сервис
-                            </h2>
-                            
-                            <div className="flex gap-6 mb-6 items-center">
-                                <p className={`font-gilroy_bold text-[#0D062D] text-[24px] leading-[30px]`}>Тип документа:</p>
+                            <div className="flex flex-col gap-[12px]">
+                                <input 
+                                    type="text" 
+                                    className="pl-[10px] rounded border p-1 flex-1 mb-2 bg-[#F1F4F9] text-[#0D062D] text-[16px]"
+                                    placeholder="Название"
+                                    value={fileName}
+                                    onChange={(e) => setFileName(e.target.value)}
+                                    required
+                                    disabled={loading}
+                                />
                                 <select 
                                     value={docType}
                                     onChange={(e) => setDocType(e.target.value)}
-                                    className="rounded p-1 border"
+                                    className="rounded p-1 border bg-[#F1F4F9] text-[#0D062D] text-[16px] mb-2"
                                     disabled={loading}
                                 >
                                     <option value="doc">Документ</option>
@@ -220,27 +255,15 @@ const Folder = () => {
                                     <option value="slide">Презентация</option>
                                     <option value="form">Форма</option>
                                 </select>
+                                <button 
+                                    className={greenButtonStyle}
+                                    style={{fontFamily: 'Gilroy', fontWeight: 500, letterSpacing: 0}}
+                                    onClick={createFile}
+                                    disabled={!fileName.trim() || loading}
+                                >
+                                    {loading ? 'Создание...' : 'Создать файл'}
+                                </button>
                             </div>
-                            
-                            <div className="flex gap-6 mb-6 items-center">
-                                <p className={`font-gilroy_bold text-[#0D062D] text-[24px] leading-[30px]`}>Название:</p>
-                                <input 
-                                    type="text" 
-                                    className="pl-[10px] rounded border p-1 flex-1"
-                                    value={fileName}
-                                    onChange={(e) => setFileName(e.target.value)}
-                                    required
-                                    disabled={loading}
-                                />
-                            </div>
-                            
-                            <button 
-                                className={`${buttonStyle} w-[260px] block mx-auto ${loading ? 'opacity-50' : ''}`} 
-                                onClick={createFile}
-                                disabled={!fileName.trim() || loading}
-                            >
-                                {loading ? 'Создание...' : 'Создать'}
-                            </button>
                         </Modal>
                     </div>
                 </div>
