@@ -831,50 +831,38 @@ const Event = () => {
                         })
                         }
                         <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Папки</p>
-                        <div className="flex flex-col">
-                            {event.projects?.map((projectId) => {
-                                // Проверяем, что projects загружен
-                                if (!projects || typeof projects !== 'object') {
-                                    return null;
-                                }
-
-                                const project = projects[projectId];
-                                if (!project) {
-                                    // Если проект не найден, попробуем загрузить его
-                                    axios.get(`${BASE_URL}/projects/${projectId}/`, {
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                                        }
-                                    })
-                                    .then(response => {
-                                        setProject(prevProjects => {
-                                            const newProjects = Array.isArray(prevProjects) ? [...prevProjects] : [];
-                                            newProjects.push(response.data);
-                                            return newProjects;
-                                        });
-                                    })
-                                    .catch(error => {
-                                        console.error('Ошибка при загрузке проекта:', error);
-                                    });
-                                    return null;
-                                }
-                                
-                                return (
-                                <div key={project.id} className="flex items-center justify-between bg-white p-3 rounded-xl mb-2">
-                                    <span className="font-gilroy_semibold text-[20px]">{project.title}</span>
-                                        {isEditing && (
-                                    <button
-                                        onClick={() => handleDeleteProject(project.id)}
-                                        className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition-colors"
-                                    >
-                                        Удалить
-                                    </button>
-                                        )}
+                        {event.projects && event.projects.length > 0 && (
+                            <div className="mt-4">
+                                <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">Папки</h3>
+                                <div className="grid grid-cols-3 gap-4">
+                                    {event.projects.map(projectId => {
+                                        const project = projects[projectId];
+                                        if (!project) return null;
+                                        return (
+                                            <Link
+                                                key={project.id}
+                                                to={`/folder?project_id=${project.id}&event_id=${event.id}`}
+                                                className="flex items-center justify-between bg-white rounded-lg p-3 hover:bg-gray-50 transition-colors"
+                                            >
+                                                <span className="font-gilroy_semibold text-[#0D062D] text-sm">
+                                                    {project.title}
+                                                </span>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        handleDeleteProject(project.id);
+                                                    }}
+                                                    className="text-red-500 hover:text-red-700 ml-2"
+                                                >
+                                                    ×
+                                                </button>
+                                            </Link>
+                                        );
+                                    })}
                                 </div>
-                                );
-                            })}
-                        </div>
+                            </div>
+                        )}
                         <button 
                             onClick={() => setCreateFolderModalIsOpen(true)}
                             className={`${buttonStyle} mt-4`}

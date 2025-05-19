@@ -29,8 +29,8 @@ const filesModalWindowStyle = {
 
 const Folder = () => {
     const folderData = Object.fromEntries(new URLSearchParams(useLocation().search));
-    const projId = folderData['projid'];
-    const eventId = folderData['eventid'];
+    const projId = folderData['project_id'];
+    const eventId = folderData['event_id'];
     const [event, setEvent] = useState({});
     const [project, setProject] = useState({});
     const [fileName, setFileName] = useState('');
@@ -43,6 +43,15 @@ const Folder = () => {
     useEffect(() => {
         if (!localStorage.getItem('access_token')) {
             window.location.href = '/';
+            return;
+        }
+
+        if (!eventId || !projId) {
+            console.error('Отсутствуют необходимые параметры:', { eventId, projId });
+            setMessage({
+                text: 'Ошибка: отсутствуют необходимые параметры',
+                type: 'error'
+            });
             return;
         }
 

@@ -21,6 +21,8 @@ const Profile = () => {
     const navigate = useNavigate();
     const [tasks, setTasks] = useState([]);
     const [activeTab, setActiveTab] = useState('events');
+    const [users, setUsers] = useState({});
+    const [project, setProject] = useState([]);
 
     const currentUserAccessLevel = parseInt(localStorage.getItem('access_level') || '1');
     const currentUserProfileId = localStorage.getItem('profile_id');
@@ -63,6 +65,20 @@ const Profile = () => {
         const fetchProfileData = async () => {
             setIsLoading(true);
             try {
+                // Получаем список пользователей
+                const usersResponse = await axios.get(`${BASE_URL}/api/users/`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                
+                // Создаем объект с пользователями, где ключ - ID пользователя
+                const usersMap = {};
+                usersResponse.data.forEach(user => {
+                    usersMap[user.id] = user;
+                });
+                setUsers(usersMap);
+
                 const endpoint = isOwnProfile 
                     ? `${BASE_URL}/api/profile/${viewedProfileId}/`
                     : `${BASE_URL}/api/profile_view/${viewedProfileId}/`;
@@ -81,6 +97,14 @@ const Profile = () => {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     }
                 });
+
+                const proj = await axios.get(`${BASE_URL}/projects/`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                setProject(proj.data);
                 
                 console.log('Полученные задачи:', tasksResponse.data);
                 console.log('ID просматриваемого профиля:', viewedProfileId);
@@ -106,6 +130,9 @@ const Profile = () => {
                             } else {
                                 taskDetails = task;
                             }
+
+                            console.log('Детали задачи:', taskDetails);
+                            console.log('Исполнитель:', taskDetails.executor);
 
                             return {
                                 id: task.id,
@@ -141,6 +168,11 @@ const Profile = () => {
     
         fetchProfileData();
     }, [viewedProfileId, isOwnProfile, navigate]);
+
+    let projects = {};
+    for (const pro of project) {
+        projects[pro.id] = pro;
+    }
 
     const handleSave = async () => {
         setIsLoading(true);
@@ -411,10 +443,10 @@ const Profile = () => {
                                 <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">{event.title}</h3>
                                 
                                 <p className="text-[#0D062D] text-opacity-70 text-[14px] flex-grow overflow-hidden break-words">
-                                                    <span className="line-clamp-2">
-                                                        {event.description}
-                                                    </span>
-                                                </p>
+                                    <span className="line-clamp-2">
+                                        {event.description}
+                                    </span>
+                                </p>
                                 <p className="text-[#0D062D] text-opacity-50 text-xs mt-2">
                                     {new Date(event.date).toLocaleDateString()}
                                 </p>
@@ -444,6 +476,14 @@ const Profile = () => {
                                         <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2">
                                             {task.title || 'Без названия'}
                                         </h3>
+                                        {task.executor && (
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-[#0D062D] text-opacity-50 text-sm">Исполнитель:</span>
+                                                <span className="text-[#0D062D] text-sm">
+                                                    {users[task.executor]?.full_name || 'Неизвестный пользователь'}
+                                                </span>
+                                            </div>
+                                        )}
                                         {task.subtasks && task.subtasks.length > 0 && (
                                             <div className="mb-2">
                                                 {task.subtasks.map((subtask, index) => (
@@ -497,6 +537,14 @@ const Profile = () => {
                                         <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2">
                                             {task.title || 'Без названия'}
                                         </h3>
+                                        {task.executor && (
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-[#0D062D] text-opacity-50 text-sm">Исполнитель:</span>
+                                                <span className="text-[#0D062D] text-sm">
+                                                    {users[task.executor]?.full_name || 'Неизвестный пользователь'}
+                                                </span>
+                                            </div>
+                                        )}
                                         {task.subtasks && task.subtasks.length > 0 && (
                                             <div className="mb-2">
                                                 {task.subtasks.map((subtask, index) => (
@@ -550,6 +598,14 @@ const Profile = () => {
                                         <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2">
                                             {task.title || 'Без названия'}
                                         </h3>
+                                        {task.executor && (
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-[#0D062D] text-opacity-50 text-sm">Исполнитель:</span>
+                                                <span className="text-[#0D062D] text-sm">
+                                                    {users[task.executor]?.full_name || 'Неизвестный пользователь'}
+                                                </span>
+                                            </div>
+                                        )}
                                         {task.subtasks && task.subtasks.length > 0 && (
                                             <div className="mb-2">
                                                 {task.subtasks.map((subtask, index) => (
