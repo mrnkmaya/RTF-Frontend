@@ -82,41 +82,11 @@ const Profile = () => {
                     }
                 });
                 
+                console.log('Полученные задачи:', tasksResponse.data);
+                console.log('ID просматриваемого профиля:', viewedProfileId);
+                
                 // Обрабатываем задачи
                 const processedTasks = tasksResponse.data
-                    .filter(task => {
-                        try {
-                            let taskDetails;
-                            if (typeof task.task === 'string') {
-                                try {
-                                    taskDetails = JSON.parse(task.task);
-                                } catch (e) {
-                                    taskDetails = {
-                                        title: task.task,
-                                        description: '',
-                                        deadline: null,
-                                        status: task.status || 2,
-                                        user: task.user,
-                                        executor: task.executor,
-                                        subtasks: []
-                                    };
-                                }
-                            } else {
-                                taskDetails = task;
-                            }
-
-                            const userId = parseInt(viewedProfileId);
-                            return (
-                                taskDetails.user === userId || 
-                                taskDetails.executor === userId ||
-                                task.user === userId ||
-                                task.executor === userId
-                            );
-                        } catch (error) {
-                            console.error('Ошибка при обработке задачи:', error);
-                            return false;
-                        }
-                    })
                     .map(task => {
                         try {
                             let taskDetails;
@@ -124,13 +94,11 @@ const Profile = () => {
                                 try {
                                     taskDetails = JSON.parse(task.task);
                                 } catch (e) {
-                                    // Если это не JSON, создаем объект из строки
                                     taskDetails = {
                                         title: task.task,
                                         description: '',
                                         deadline: null,
                                         status: task.status || 2,
-                                        user: task.user,
                                         executor: task.executor,
                                         subtasks: []
                                     };
@@ -144,8 +112,7 @@ const Profile = () => {
                                 title: taskDetails.title || 'Без названия',
                                 description: taskDetails.description || '',
                                 deadline: taskDetails.deadline || null,
-                                status: taskDetails.status || 2,
-                                user: taskDetails.user || null,
+                                status: taskDetails.status || task.status || 2,
                                 executor: taskDetails.executor || task.executor || null,
                                 subtasks: taskDetails.subtasks || [],
                                 task: typeof task.task === 'string' ? task.task : JSON.stringify(taskDetails)
@@ -156,6 +123,8 @@ const Profile = () => {
                         }
                     })
                     .filter(task => task !== null);
+                
+                console.log('Обработанные задачи:', processedTasks);
                 
                 setProfileData(response.data.profile);
                 setEvents(response.data.events || []);
@@ -478,7 +447,7 @@ const Profile = () => {
                                         {task.subtasks && task.subtasks.length > 0 && (
                                             <div className="mb-2">
                                                 {task.subtasks.map((subtask, index) => (
-                                                    <div key={`subtask-${task.id}-${index}-not-started`} className="flex items-center gap-2 mb-1">
+                                                    <div key={index} className="flex items-center gap-2 mb-1">
                                                         <input
                                                             type="checkbox"
                                                             className="w-4 h-4 rounded border-[#0D062D]"
@@ -536,6 +505,8 @@ const Profile = () => {
                                                             type="checkbox"
                                                             className="w-4 h-4 rounded border-[#0D062D]"
                                                             checked={typeof subtask === 'object' ? subtask.status === 3 : false}
+                                                            onChange={() => {}}
+                                                            readOnly
                                                         />
                                                         <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
                                                             {typeof subtask === 'object' ? subtask.title : subtask}
@@ -587,6 +558,8 @@ const Profile = () => {
                                                             type="checkbox"
                                                             className="w-4 h-4 rounded border-[#0D062D]"
                                                             checked={typeof subtask === 'object' ? subtask.status === 3 : false}
+                                                            onChange={() => {}}
+                                                            readOnly
                                                         />
                                                         <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
                                                             {typeof subtask === 'object' ? subtask.title : subtask}

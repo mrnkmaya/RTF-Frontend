@@ -68,6 +68,8 @@ const Event = () => {
     const [filesModalIsOpen, setFilesModalIsOpen] = useState(false);
     const [taskModalIsOpen, setTaskModalIsOpen] = useState(false);
     const [editTaskModalIsOpen, setEditTaskModalIsOpen] = useState(false);
+    const [createFolderModalIsOpen, setCreateFolderModalIsOpen] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
     const [selectedTask, setSelectedTask] = useState(null);
     const [newTask, setNewTask] = useState({
         title: '',
@@ -365,17 +367,48 @@ const Event = () => {
     };
 
     function createFolder() {
+        if (!newFolderName.trim()) {
+            alert('Пожалуйста, введите название папки');
+            return;
+        }
+
         const data = { 
-            title: document.getElementById('folderName').value,
+            title: newFolderName.trim(),
             event_id: eventData.id
         };
+
         axios.post(`${BASE_URL}/projects/create/`, data, {
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json'
             }
-        } ,{ withCredentials: true })
+        })
         .then(response => {
-            document.getElementById('folderName').value = '';
+            console.log('Ответ сервера при создании папки:', response.data);
+            
+            // Обновляем список проектов в событии
+            setEvent(prevEvent => ({
+                ...prevEvent,
+                projects: [...(prevEvent.projects || []), response.data.id]
+            }));
+
+            // Загружаем обновленный список проектов
+            axios.get(`${BASE_URL}/projects/`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            })
+            .then(projResponse => {
+                setProject(projResponse.data);
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке проектов:', error);
+            });
+            
+            setNewFolderName('');
+            setCreateFolderModalIsOpen(false);
+            
             const message = document.getElementById('succes_folder');
             message.classList.remove('hidden');
             setTimeout(() => {
@@ -383,7 +416,8 @@ const Event = () => {
             }, 3000);
         })
         .catch(error => { 
-            console.error('There was an error!', error);
+            console.error('Ошибка при создании папки:', error);
+            console.error('Детали ошибки:', error.response?.data);
             const message = document.getElementById('error_folder');
             message.classList.remove('hidden');
             setTimeout(() => {
@@ -423,14 +457,14 @@ const Event = () => {
                 description: newTask.description || "",
                 deadline: newTask.deadline || null,
                 status: newTask.status || 2,
-                user: newTask.assignee || null,
+                executor: newTask.assignee || null,
                 event: parseInt(eventData.id),
                 subtasks: newTask.subtasks.map(subtask => 
                     typeof subtask === 'string' ? subtask : subtask.title
                 )
             }),
             event: eventData.id,
-            user: newTask.assignee || null
+            executor: newTask.assignee || null
         };
 
         console.log('Подготовленные данные задачи:', taskData);
@@ -529,12 +563,14 @@ const Event = () => {
                 description: newTask.description || '',
                 deadline: newTask.deadline || null,
                 status: newTask.status || 2,
-                user: newTask.assignee || null,
                 executor: newTask.assignee || null,
                 event: parseInt(eventData.id),
                 subtasks: newTask.subtasks.map(subtask => {
                     if (typeof subtask === 'string') {
-                        return subtask;
+                        return {
+                            title: subtask,
+                            status: 2
+                        };
                     }
                     return {
                         title: subtask.title || '',
@@ -545,9 +581,11 @@ const Event = () => {
 
             const taskData = {
                 task: JSON.stringify(updatedTaskData),
-                event: eventData.id.toString(),
-                user: newTask.assignee || null
+                event: parseInt(eventData.id),
+                executor: newTask.assignee || null
             };
+
+            console.log('Отправляемые данные:', taskData); // Добавим для отладки
 
             axios.put(`${BASE_URL}/api/tasks/${selectedTask.id}/`, taskData, {
                 headers: {
@@ -653,21 +691,32 @@ const Event = () => {
     };
 
     const handleDeleteProject = (projectId) => {
+        if (!projectId) {
+            console.error('ID проекта не определен');
+            alert('Ошибка: ID проекта не определен');
+            return;
+        }
+
         if (window.confirm('Вы уверены, что хотите удалить эту папку?')) {
             axios.delete(`${BASE_URL}/projects/${projectId}/`, {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                    'Content-Type': 'application/json'
                 }
             })
             .then(() => {
                 // Обновляем список проектов в состоянии события
                 setEvent(prevEvent => ({
                     ...prevEvent,
-                    projects: prevEvent.projects.filter(p => p.id !== projectId)
+                    projects: prevEvent.projects.filter(p => p !== projectId)
                 }));
+                
+                // Удаляем проект из объекта projects
+                setProject(prevProjects => prevProjects.filter(p => p.id !== projectId));
             })
             .catch(error => {
                 console.error('Ошибка при удалении проекта:', error);
+                console.error('Детали ошибки:', error.response?.data);
                 alert('Не удалось удалить папку. Пожалуйста, попробуйте снова.');
             });
         }
@@ -752,7 +801,7 @@ const Event = () => {
                         ?
                         <div>
                             {event.organizers?.map((org) => {
-                                return <p key={org} className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[org]}</p>
+                                return <p key={`organizer-${org}`} className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[org]}</p>
                             })}
                             <select 
                                 multiple
@@ -770,7 +819,7 @@ const Event = () => {
                                 }}
                                 >
                                 {users?.map((user) => (
-                                    <option key={user.id} value={user.id}>
+                                    <option key={`user-option-${user.id}`} value={user.id}>
                                     {user.full_name}
                                     </option>
                                 ))}
@@ -778,29 +827,60 @@ const Event = () => {
                         </div>
                         :
                         event.organizers?.map((org) => {
-                            return <p key={org} className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[org]}</p>
+                            return <p key={`organizer-display-${org}`} className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[org]}</p>
                         })
                         }
                         <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Папки</p>
                         <div className="flex flex-col">
-                            {event.projects?.map((project) => (
+                            {event.projects?.map((projectId) => {
+                                // Проверяем, что projects загружен
+                                if (!projects || typeof projects !== 'object') {
+                                    return null;
+                                }
+
+                                const project = projects[projectId];
+                                if (!project) {
+                                    // Если проект не найден, попробуем загрузить его
+                                    axios.get(`${BASE_URL}/projects/${projectId}/`, {
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                                        }
+                                    })
+                                    .then(response => {
+                                        setProject(prevProjects => {
+                                            const newProjects = Array.isArray(prevProjects) ? [...prevProjects] : [];
+                                            newProjects.push(response.data);
+                                            return newProjects;
+                                        });
+                                    })
+                                    .catch(error => {
+                                        console.error('Ошибка при загрузке проекта:', error);
+                                    });
+                                    return null;
+                                }
+                                
+                                return (
                                 <div key={project.id} className="flex items-center justify-between bg-white p-3 rounded-xl mb-2">
                                     <span className="font-gilroy_semibold text-[20px]">{project.title}</span>
+                                        {isEditing && (
                                     <button
                                         onClick={() => handleDeleteProject(project.id)}
                                         className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition-colors"
                                     >
                                         Удалить
                                     </button>
+                                        )}
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
-                        {isEditing &&
-                            <form id='folderForm'>
-                                <input className="bg-[#F1F1F1] rounded mr-[10px]" type="text" id="folderName" required/>
-                                <button type="button" onClick={(evt) => {createFolder()}} className={`${buttonStyle}`}>Создать</button>
-                            </form>
-                        }
+                        <button 
+                            onClick={() => setCreateFolderModalIsOpen(true)}
+                            className={`${buttonStyle} mt-4`}
+                        >
+                            Создать папку
+                        </button>
                     </div>
 
                     {/* Центральная колонка с задачами */}
@@ -859,14 +939,13 @@ const Event = () => {
                                         <div className="flex flex-col">
                                             <div className="cursor-pointer" onClick={() => handleEditTask(task)}>
                                                 <h3 
-                                                    key={`title-${task.id}`}
                                                     className={`${textStyleSemibold} text-[20px] mb-2`}
                                                 >
                                                     {taskDetails?.title || 'Без названия'}
                                                 </h3>
                                             </div>
                                             {taskDetails?.subtasks && Array.isArray(taskDetails.subtasks) && taskDetails.subtasks.length > 0 && (
-                                                <div key={`subtasks-${task.id}`} className="mb-2">
+                                                <div className="mb-2">
                                                     <span className="text-[#0D062D] text-opacity-50 text-sm">Подзадачи:</span>
                                                     <ul className="list-disc list-inside mt-1">
                                                         {taskDetails.subtasks.map((subtask, subIndex) => {
@@ -903,13 +982,13 @@ const Event = () => {
                                             )}
                                             
                                             {taskDetails?.user && (
-                                                <div key={`user-${task.id}`} className="flex items-center gap-2 mb-2">
+                                                <div className="flex items-center gap-2 mb-2">
                                                     <span className="text-[#0D062D] text-opacity-50 text-sm">Исполнитель:</span>
                                                     <span className="text-[#0D062D] text-sm">{orgs[taskDetails.user]}</span>
                                                 </div>
                                             )}
 
-                                            <div key={`status-${task.id}`} className="flex justify-between items-center mt-2">
+                                            <div className="flex justify-between items-center mt-2">
                                                 <span className={`text-sm px-2 py-1 rounded-full ${
                                                     taskDetails?.status === 1 ? 'bg-yellow-100 text-yellow-800' :
                                                     taskDetails?.status === 2 ? 'bg-red-100 text-red-800' :
@@ -1075,9 +1154,9 @@ const Event = () => {
                             value={newTask.assignee}
                             onChange={(e) => setNewTask({...newTask, assignee: e.target.value})}
                         >
-                            <option value="">Ответственный</option>
+                            <option key="default-assignee" value="">Ответственный</option>
                             {users?.map((user) => (
-                                <option key={user.id} value={user.id}>
+                                <option key={`assignee-${user.id}`} value={user.id}>
                                     {user.full_name}
                                 </option>
                             ))}
@@ -1185,9 +1264,9 @@ const Event = () => {
                             value={newTask.assignee || ''}
                             onChange={(e) => setNewTask({...newTask, assignee: e.target.value})}
                         >
-                            <option value="">Ответственный</option>
+                            <option key="default-assignee" value="">Ответственный</option>
                             {users?.map((user) => (
-                                <option key={user.id} value={user.id}>
+                                <option key={`assignee-${user.id}`} value={user.id}>
                                     {user.full_name}
                                 </option>
                             ))}
@@ -1238,6 +1317,46 @@ const Event = () => {
                             onClick={() => handleCreateFile('slide', 'Новая презентация', 'presentation')}
                         >
                             Создать презентацию
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Модальное окно создания папки */}
+            <Modal
+                isOpen={createFolderModalIsOpen}
+                onRequestClose={() => {
+                    setCreateFolderModalIsOpen(false);
+                    setNewFolderName('');
+                }}
+                style={taskModalStyle}
+            >
+                <div className="flex flex-col gap-4">
+                    <h2 className="font-gilroy_bold text-[#0D062D] text-[24px] mb-4">Создание папки</h2>
+                    <div className="flex flex-col gap-2">
+                        <input
+                            type="text"
+                            placeholder="Название папки"
+                            className="bg-[#F1F4F9] rounded-lg p-2"
+                            value={newFolderName}
+                            onChange={(e) => setNewFolderName(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex justify-center gap-4 mt-4">
+                        <button
+                            className="bg-[#F1F4F9] text-[#0D062D] px-6 py-2 rounded-xl"
+                            onClick={() => {
+                                setCreateFolderModalIsOpen(false);
+                                setNewFolderName('');
+                            }}
+                        >
+                            Отмена
+                        </button>
+                        <button
+                            className='bg-[#00D166] text-white p-[7px] rounded-lg'
+                            onClick={createFolder}
+                        >
+                            Создать папку
                         </button>
                     </div>
                 </div>
