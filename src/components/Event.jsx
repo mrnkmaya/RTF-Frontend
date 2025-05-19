@@ -5,28 +5,29 @@ import axios from "axios";
 import { format, parse } from 'date-fns';
 import Modal from 'react-modal';
 import { BASE_URL } from "./Globals";
+import GroupIcon from '../photos/Group.svg';
 
 const buttonStyle = 'bg-[#0077EB] w-[160px] h-[40px] rounded-xl font-gilroy_semibold text-white text-xl p-2';
 const textStyleSemibold = 'font-gilroy_semibold text-[#0D062D]';
 
-const filesModalWindowStyle = {
-content: {
-    top: '50%',
-    left: '50%',
-    right: 'auto',
-    bottom: 'auto',
-    marginRight: '-50%',
-    transform: 'translate(-50%, -50%)',
-    backgroundColor: '#5C6373',
-    width: '610px',
-    height: '347px',
-    borderRadius: '24px',
-    border: '2px solid #FFFFFF',
-    padding: '24px 32px',
-},
+const taskModalStyle = {
+    content: {
+        top: '273.5px',
+        left: '496px',
+        right: 'auto',
+        bottom: 'auto',
+        width: '448px',
+        height: '353px',
+        borderRadius: '24px',
+        padding: '24px',
+        gap: '12px',
+        backgroundColor: '#FFFFFF',
+        border: 'none',
+        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)'
+    },
 };
 
-const taskModalStyle = {
+const filesModalStyle = {
     content: {
         top: '50%',
         left: '50%',
@@ -34,16 +35,13 @@ const taskModalStyle = {
         bottom: 'auto',
         marginRight: '-50%',
         transform: 'translate(-50%, -50%)',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#5C6373',
         width: '610px',
+        height: '347px',
         borderRadius: '24px',
-        border: 'none',
+        border: '2px solid #FFFFFF',
         padding: '24px 32px',
-        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)'
     },
-    overlay: {
-        backgroundColor: 'rgba(0, 0, 0, 0.5)'
-    }
 };
 
 const formateDate = (date) => {
@@ -61,6 +59,7 @@ const Event = () => {
     const eventData = Object.fromEntries(new URLSearchParams(location.search));
     const navigate = useNavigate();
 
+    const [titleError, setTitleError] = useState(false);
     const [event, setEvent] = useState([]);
     const [users, setUsers] = useState([]);
     const [project, setProject] = useState([]);
@@ -115,23 +114,33 @@ const Event = () => {
                     tasks: data.data.tasks?.map(task => {
                         try {
                             console.log('Обработка задачи:', task);
-                            const taskDetails = JSON.parse(task.task);
+                            const taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
                             console.log('Распарсенные детали задачи:', taskDetails);
                             
                             return {
                                 id: task.id,
-                                title: taskDetails.title,
-                                description: taskDetails.description,
-                                deadline: taskDetails.deadline,
-                                status: taskDetails.status,
-                                user: taskDetails.user,
-                                assignee: taskDetails.user,
-                                subtasks: taskDetails.subtasks || [],
+                                title: taskDetails?.title || 'Без названия',
+                                description: taskDetails?.description || '',
+                                deadline: taskDetails?.deadline || null,
+                                status: taskDetails?.status || 2,
+                                user: taskDetails?.user || null,
+                                assignee: taskDetails?.user || null,
+                                subtasks: taskDetails?.subtasks || [],
                                 task: task.task // сохраняем оригинальную строку JSON
                             };
                         } catch (error) {
                             console.error('Ошибка при обработке задачи:', error);
-                            return task; // возвращаем задачу как есть в случае ошибки
+                            return {
+                                id: task.id,
+                                title: 'Без названия',
+                                description: '',
+                                deadline: null,
+                                status: 2,
+                                user: null,
+                                assignee: null,
+                                subtasks: [],
+                                task: task.task
+                            };
                         }
                     }) || []
                 };
@@ -316,8 +325,7 @@ const Event = () => {
         setFilesModalIsOpen(false);
     }
 
-    function createFile(type, title, custom_name) {
-        // Получаем первый проект из списка (или другой логически правильный выбор)
+    const handleCreateFile = (type, title, custom_name) => {
         const projectId = event.projects?.length > 0 ? event.projects[0] : null;
         
         if (!projectId) {
@@ -331,7 +339,6 @@ const Event = () => {
             custom_name: custom_name
         };
         
-        // Используем правильный endpoint согласно бэкенду
         axios.post(`${BASE_URL}/projects/${projectId}/create_google_service/`, data, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -355,7 +362,7 @@ const Event = () => {
                 message.classList.add('hidden');
             }, 3000);
         });
-    }
+    };
 
     function createFolder() {
         const data = { 
@@ -403,18 +410,27 @@ const Event = () => {
     };
 
     const handleCreateTask = () => {
+        if (!newTask.title || newTask.title.trim() === '') {
+            console.log('Попытка создания задачи без названия');
+            setTitleError(true);
+            return;
+        }
         console.log('Начало создания задачи:', newTask);
         
         const taskData = {
             task: JSON.stringify({
                 title: newTask.title,
-                description: newTask.description,
-                deadline: newTask.deadline,
-                status: newTask.status,
-                user: newTask.assignee,
-                subtasks: newTask.subtasks
+                description: newTask.description || "",
+                deadline: newTask.deadline || null,
+                status: newTask.status || 2,
+                user: newTask.assignee || null,
+                event: parseInt(eventData.id),
+                subtasks: newTask.subtasks.map(subtask => 
+                    typeof subtask === 'string' ? subtask : subtask.title
+                )
             }),
-            event: eventData.id
+            event: eventData.id,
+            user: newTask.assignee || null
         };
 
         console.log('Подготовленные данные задачи:', taskData);
@@ -434,11 +450,14 @@ const Event = () => {
                 tasks: [...(event.tasks || []), {
                     id: response.data.id,
                     title: newTask.title,
-                    description: newTask.description,
-                    deadline: newTask.deadline,
-                    status: newTask.status,
-                    user: newTask.assignee,
-                    subtasks: newTask.subtasks,
+                    description: newTask.description || "",
+                    deadline: newTask.deadline || null,
+                    status: newTask.status || 2,
+                    user: newTask.assignee || null,
+                    executor: newTask.assignee || null,
+                    subtasks: newTask.subtasks.map(subtask => 
+                        typeof subtask === 'string' ? subtask : subtask.title
+                    ),
                     task: taskData.task
                 }]
             };
@@ -456,6 +475,7 @@ const Event = () => {
                 subtasks: []
             });
             setTaskModalIsOpen(false);
+            setTitleError(false);
         })
         .catch(error => {
             console.error('Ошибка при создании задачи:', error);
@@ -466,66 +486,26 @@ const Event = () => {
     };
 
     const handleEditTask = (task) => {
-        setSelectedTask(task);
-        setNewTask({
-            title: task.title,
-            description: task.description,
-            deadline: task.deadline,
-            status: task.status,
-            assignee: task.user,
-            subtasks: task.subtasks
-        });
-        setEditTaskModalIsOpen(true);
-    };
-
-    const handleUpdateTask = () => {
-        if (!newTask.title) {
-            alert('Название задачи обязательно для заполнения');
-            return;
-        }
-
-        const taskObject = {
-            title: newTask.title,
-            description: newTask.description || "",
-            deadline: newTask.deadline || null,
-            status: newTask.status,
-            user: newTask.assignee || null,
-            event: eventData.id,
-            subtasks: newTask.subtasks.map(st => st.title)
-        };
-
-        const taskData = {
-            task: JSON.stringify(taskObject),
-            event: eventData.id.toString()
-        };
-
-        axios.put(`${BASE_URL}/api/tasks/${selectedTask.id}/`, taskData, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => {
-            const taskDetails = JSON.parse(response.data.task);
-            const updatedTask = {
-                id: response.data.id,
-                title: taskDetails.title,
-                description: taskDetails.description,
-                deadline: taskDetails.deadline,
-                status: taskDetails.status,
-                user: taskDetails.user,
-                assignee: taskDetails.user,
-                subtasks: taskDetails.subtasks || []
-            };
-
-            setEvent(prevEvent => ({
-                ...prevEvent,
-                tasks: prevEvent.tasks.map(task => 
-                    task.id === selectedTask.id ? updatedTask : task
-                )
-            }));
-
-            setEditTaskModalIsOpen(false);
+        if (!task) return;
+        
+        try {
+            const taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
+            setSelectedTask(task);
+            setNewTask({
+                title: taskDetails?.title || '',
+                description: taskDetails?.description || '',
+                deadline: taskDetails?.deadline || '',
+                status: taskDetails?.status || 2,
+                assignee: taskDetails?.user || '',
+                subtasks: taskDetails?.subtasks?.map(st => ({
+                    title: typeof st === 'string' ? st : st.title,
+                    status: typeof st === 'string' ? 2 : (st.status || 2)
+                })) || []
+            });
+            setEditTaskModalIsOpen(true);
+        } catch (error) {
+            console.error('Ошибка при обработке задачи для редактирования:', error);
+            setSelectedTask(task);
             setNewTask({
                 title: '',
                 description: '',
@@ -534,12 +514,184 @@ const Event = () => {
                 assignee: '',
                 subtasks: []
             });
-            setSelectedTask(null);
-        })
-        .catch(error => {
-            console.error('Ошибка при обновлении задачи:', error);
-            alert('Не удалось обновить задачу. Пожалуйста, проверьте введенные данные и попробуйте снова.');
-        });
+            setEditTaskModalIsOpen(true);
+        }
+    };
+
+    const handleUpdateTask = () => {
+        if (!selectedTask) return;
+        
+        try {
+            const taskDetails = typeof selectedTask.task === 'string' ? JSON.parse(selectedTask.task) : selectedTask;
+            
+            const updatedTaskData = {
+                title: newTask.title,
+                description: newTask.description || '',
+                deadline: newTask.deadline || null,
+                status: newTask.status || 2,
+                user: newTask.assignee || null,
+                executor: newTask.assignee || null,
+                event: parseInt(eventData.id),
+                subtasks: newTask.subtasks.map(subtask => {
+                    if (typeof subtask === 'string') {
+                        return subtask;
+                    }
+                    return {
+                        title: subtask.title || '',
+                        status: subtask.status || 2
+                    };
+                })
+            };
+
+            const taskData = {
+                task: JSON.stringify(updatedTaskData),
+                event: eventData.id.toString(),
+                user: newTask.assignee || null
+            };
+
+            axios.put(`${BASE_URL}/api/tasks/${selectedTask.id}/`, taskData, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                const updatedTaskDetails = JSON.parse(response.data.task);
+                const updatedTask = {
+                    id: response.data.id,
+                    title: updatedTaskDetails.title,
+                    description: updatedTaskDetails.description,
+                    deadline: updatedTaskDetails.deadline,
+                    status: updatedTaskDetails.status,
+                    user: updatedTaskDetails.user,
+                    executor: updatedTaskDetails.executor || updatedTaskDetails.user,
+                    subtasks: updatedTaskDetails.subtasks || [],
+                    task: response.data.task
+                };
+
+                setEvent(prevEvent => ({
+                    ...prevEvent,
+                    tasks: prevEvent.tasks.map(t => 
+                        t.id === selectedTask.id ? updatedTask : t
+                    )
+                }));
+                setEditTaskModalIsOpen(false);
+            })
+            .catch(error => {
+                console.error('Ошибка при обновлении задачи:', error);
+                alert('Не удалось обновить задачу. Пожалуйста, попробуйте снова.');
+            });
+        } catch (error) {
+            console.error('Ошибка при обработке задачи:', error);
+            alert('Не удалось обновить задачу. Пожалуйста, попробуйте снова.');
+        }
+    };
+
+    const handleUpdateSubtaskStatus = (task, taskDetails, subtaskIndex, newStatus) => {
+        try {
+            const updatedSubtasks = [...(taskDetails.subtasks || [])];
+            const subtask = updatedSubtasks[subtaskIndex];
+            
+            if (typeof subtask === 'string') {
+                updatedSubtasks[subtaskIndex] = {
+                    title: subtask,
+                    status: newStatus
+                };
+            } else {
+                updatedSubtasks[subtaskIndex] = {
+                    ...subtask,
+                    status: newStatus
+                };
+            }
+
+            const updatedTaskDetails = {
+                ...taskDetails,
+                subtasks: updatedSubtasks
+            };
+
+            const taskData = {
+                task: JSON.stringify(updatedTaskDetails),
+                event: eventData.id.toString(),
+                user: taskDetails.user
+            };
+
+            axios.put(`${BASE_URL}/api/tasks/${task.id}/`, taskData, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                const updatedTaskDetails = JSON.parse(response.data.task);
+                const updatedTask = {
+                    id: response.data.id,
+                    title: updatedTaskDetails.title,
+                    description: updatedTaskDetails.description,
+                    deadline: updatedTaskDetails.deadline,
+                    status: updatedTaskDetails.status,
+                    user: updatedTaskDetails.user,
+                    executor: updatedTaskDetails.executor || updatedTaskDetails.user,
+                    subtasks: updatedTaskDetails.subtasks || [],
+                    task: response.data.task
+                };
+
+                setEvent(prevEvent => ({
+                    ...prevEvent,
+                    tasks: prevEvent.tasks.map(t => 
+                        t.id === task.id ? updatedTask : t
+                    )
+                }));
+            })
+            .catch(error => {
+                console.error('Ошибка при обновлении статуса подзадачи:', error);
+                alert('Не удалось обновить статус подзадачи. Пожалуйста, попробуйте снова.');
+            });
+        } catch (error) {
+            console.error('Ошибка при обработке подзадачи:', error);
+            alert('Не удалось обновить статус подзадачи. Пожалуйста, попробуйте снова.');
+        }
+    };
+
+    const handleDeleteProject = (projectId) => {
+        if (window.confirm('Вы уверены, что хотите удалить эту папку?')) {
+            axios.delete(`${BASE_URL}/projects/${projectId}/`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            })
+            .then(() => {
+                // Обновляем список проектов в состоянии события
+                setEvent(prevEvent => ({
+                    ...prevEvent,
+                    projects: prevEvent.projects.filter(p => p.id !== projectId)
+                }));
+            })
+            .catch(error => {
+                console.error('Ошибка при удалении проекта:', error);
+                alert('Не удалось удалить папку. Пожалуйста, попробуйте снова.');
+            });
+        }
+    };
+
+    const handleDeleteTask = async (taskId) => {
+        if (window.confirm('Вы уверены, что хотите удалить эту задачу?')) {
+            try {
+                await axios.delete(`${BASE_URL}/api/tasks/${taskId}/`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                
+                // Обновляем список задач в событии
+                setEvent(prevEvent => ({
+                    ...prevEvent,
+                    tasks: prevEvent.tasks.filter(task => task.id !== taskId)
+                }));
+            } catch (error) {
+                console.error('Ошибка при удалении задачи:', error);
+                alert('Не удалось удалить задачу. Пожалуйста, попробуйте снова.');
+            }
+        }
     };
 
     return (
@@ -571,9 +723,9 @@ const Event = () => {
                         }
                     }>{isEditing ? 'Подтвердить' : 'Редактировать'}</button>
                 </div>
-                <div className="flex justify-between gap-6">
+                <div className="flex justify-between gap-6 h-[calc(100vh-180px)]">
                     {/* Левая колонка с информацией о мероприятии */}
-                    <div className="w-[400px]">
+                    <div className="w-[400px] flex-shrink-0">
                         <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Название</p>
                         {isEditing
                         ? <input className="mb-6 bg-[#F1F1F1] h-[40px] rounded pl-[10px] w-full" 
@@ -631,10 +783,17 @@ const Event = () => {
                         }
                         <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Папки</p>
                         <div className="flex flex-col">
-                            {event.projects?.map((proId) => {
-                                return <Link key={proId} to={`/folder?projid=${proId}&eventid=${event.id}`} className="bg-[#CCE8FF] w-[200px] h-fit rounded-xl px-[12px] py-[8px] text-[#0D062D] font-gilroy_semibold font-[20px] leading-[25px] mb-3"
-                                onClick={() => {setIsFolderOpen(true)}}>{projects[proId]?.title}</Link>
-                            })}
+                            {event.projects?.map((project) => (
+                                <div key={project.id} className="flex items-center justify-between bg-white p-3 rounded-xl mb-2">
+                                    <span className="font-gilroy_semibold text-[20px]">{project.title}</span>
+                                    <button
+                                        onClick={() => handleDeleteProject(project.id)}
+                                        className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition-colors"
+                                    >
+                                        Удалить
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                         {isEditing &&
                             <form id='folderForm'>
@@ -645,79 +804,139 @@ const Event = () => {
                     </div>
 
                     {/* Центральная колонка с задачами */}
-                    <div className="w-[395px] max-h-[684px] bg-[#F4F4F4] rounded-[15px] p-[10px] gap-[10px] absolute top-[116px] left-[654px] overflow-y-auto">
+                    <div className="w-[395px] bg-[#F4F4F4] rounded-[15px] p-[10px] gap-[10px] flex flex-col">
                         <div className="flex justify-between items-center mb-4">
                             <div className="flex items-center gap-2 mb-3">
                                 <div className="bg-[#56B0FF] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
                                 <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">Задачи</h3>
                             </div>
-                            {isEditing && (
-                                <button 
-                                    className="w-[32px] h-[32px] bg-[#0077EB] rounded-xl flex items-center justify-center"
-                                    onClick={() => setTaskModalIsOpen(true)}
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M12 4V20M4 12H20" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                                    </svg>
-                                </button>
-                            )}
+                            <button 
+                                className="w-[32px] h-[32px] bg-[#0077EB] rounded-xl flex items-center justify-center"
+                                onClick={() => {
+                                    setNewTask({
+                                        title: '',
+                                        description: '',
+                                        deadline: '',
+                                        status: 2,
+                                        assignee: '',
+                                        subtasks: []
+                                    });
+                                    setTaskModalIsOpen(true);
+                                }}
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 4V20M4 12H20" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                                </svg>
+                            </button>
                         </div>
-                        <div className="flex flex-col gap-3 max-h-[500px] overflow-y-auto">
-                            {event.tasks?.map((task) => (
-                                <div 
-                                    key={task.id} 
-                                    className="bg-white p-3 rounded-xl shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                                    onClick={() => handleEditTask(task)}
-                                >
-                                    <h3 className={`${textStyleSemibold} text-[20px] mb-2`}>{task.title}</h3>
-                                    <p className="text-[#0D062D] text-opacity-70 text-[14px] mb-2">{task.description}</p>
-                                    
-                                    {/* Отображение исполнителя */}
-                                    {task.user && (
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className="text-[#0D062D] text-opacity-50 text-sm">Исполнитель:</span>
-                                            <span className="text-[#0D062D] text-sm">{orgs[task.user]}</span>
-                                        </div>
-                                    )}
-                                    
-                                    {/* Отображение подзадач */}
-                                    {task.subtasks && task.subtasks.length > 0 && (
-                                        <div className="mb-2">
-                                            <span className="text-[#0D062D] text-opacity-50 text-sm">Подзадачи:</span>
-                                            <ul className="list-disc list-inside mt-1">
-                                                {task.subtasks.map((subtask, index) => (
-                                                    <li key={index} className="text-[#0D062D] text-sm">{subtask}</li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
+                        <div className="flex flex-col gap-3 max-h-[510px] overflow-y-auto">
+                            {event.tasks?.map((task, index) => {
+                                let taskDetails;
+                                try {
+                                    taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
+                                } catch (error) {
+                                    console.error('Ошибка при парсинге задачи:', error);
+                                    taskDetails = task;
+                                }
+                                
+                                return (
+                                    <div 
+                                        key={`task-${task.id}`}
+                                        className="bg-white p-3 rounded-xl shadow-sm hover:shadow-md transition-shadow relative"
+                                    >
+                                        <button
+                                            key={`delete-${task.id}`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteTask(task.id);
+                                            }}
+                                            className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                        </button>
+                                        <div className="flex flex-col">
+                                            <div className="cursor-pointer" onClick={() => handleEditTask(task)}>
+                                                <h3 
+                                                    key={`title-${task.id}`}
+                                                    className={`${textStyleSemibold} text-[20px] mb-2`}
+                                                >
+                                                    {taskDetails?.title || 'Без названия'}
+                                                </h3>
+                                            </div>
+                                            {taskDetails?.subtasks && Array.isArray(taskDetails.subtasks) && taskDetails.subtasks.length > 0 && (
+                                                <div key={`subtasks-${task.id}`} className="mb-2">
+                                                    <span className="text-[#0D062D] text-opacity-50 text-sm">Подзадачи:</span>
+                                                    <ul className="list-disc list-inside mt-1">
+                                                        {taskDetails.subtasks.map((subtask, subIndex) => {
+                                                            const subtaskTitle = typeof subtask === 'string' ? subtask : (subtask?.title || '');
+                                                            const subtaskStatus = typeof subtask === 'string' ? 2 : (subtask?.status || 2);
+                                                            
+                                                            return (
+                                                                <li key={`subtask-${task.id}-${subIndex}`} className="flex items-center gap-2 mb-1">
+                                                                    <div onClick={(e) => e.stopPropagation()}>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            className="w-4 h-4 rounded border-[#0D062D]"
+                                                                            checked={subtaskStatus === 3}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                const newStatus = e.target.checked ? 3 : 2;
+                                                                                handleUpdateSubtaskStatus(
+                                                                                    task,
+                                                                                    taskDetails,
+                                                                                    subIndex,
+                                                                                    newStatus
+                                                                                );
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                    <span className="text-[#0D062D] text-sm">
+                                                                        {subtaskTitle}
+                                                                    </span>
+                                                                </li>
+                                                            );
+                                                        })}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            
+                                            {taskDetails?.user && (
+                                                <div key={`user-${task.id}`} className="flex items-center gap-2 mb-2">
+                                                    <span className="text-[#0D062D] text-opacity-50 text-sm">Исполнитель:</span>
+                                                    <span className="text-[#0D062D] text-sm">{orgs[taskDetails.user]}</span>
+                                                </div>
+                                            )}
 
-                                    <div className="flex justify-between items-center mt-2">
-                                        <span className={`text-sm px-2 py-1 rounded-full ${
-                                            task.status === 1 ? 'bg-yellow-100 text-yellow-800' :
-                                            task.status === 2 ? 'bg-red-100 text-red-800' :
-                                            'bg-green-100 text-green-800'
-                                        }`}>
-                                            {task.status === 1 ? 'В работе' :
-                                             task.status === 2 ? 'Не начато' :
-                                             'Завершено'}
-                                        </span>
-                                        {task.deadline && (
-                                            <p className="text-[#0D062D] text-opacity-50 text-xs">
-                                                {new Date(task.deadline).toLocaleDateString()}
-                                            </p>
-                                        )}
+                                            <div key={`status-${task.id}`} className="flex justify-between items-center mt-2">
+                                                <span className={`text-sm px-2 py-1 rounded-full ${
+                                                    taskDetails?.status === 1 ? 'bg-yellow-100 text-yellow-800' :
+                                                    taskDetails?.status === 2 ? 'bg-red-100 text-red-800' :
+                                                    'bg-green-100 text-green-800'
+                                                }`}>
+                                                    {taskDetails?.status === 1 ? 'В работе' :
+                                                     taskDetails?.status === 2 ? 'Не начато' :
+                                                     'Завершено'}
+                                                </span>
+                                                {taskDetails?.deadline && (
+                                                    <p className="text-[#0D062D] text-opacity-50 text-xs">
+                                                        {new Date(taskDetails.deadline).toLocaleDateString()}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
 
                     {/* Правая колонка со статусом */}
                     <div className="flex flex-col gap-4">
                         <div className={`w-[186px] h-[54px] rounded-xl items-center p-3
-                            ${event.is_past ? 'bg-[#2B4733]'  : 'bg-[#5C5838]' }`}>
-                            <p className={`${textStyleSemibold} text-center text-[28px] leading-[34px]`}>
+                            ${event.is_past ? 'bg-[#DCF0DD] text-[#549D73]'  : 'bg-[#FFE3B0] text-[#FFA500]' }`}>
+                            <p className={` text-center text-[28px] leading-[34px]`}>
                                 {event.is_past ? 'Прошло' : 'В процессе' }
                             </p>
                         </div>
@@ -753,91 +972,61 @@ const Event = () => {
             {/* Модальное окно создания задачи */}
             <Modal
                 isOpen={taskModalIsOpen}
-                onRequestClose={() => setTaskModalIsOpen(false)}
-                style={taskModalStyle}
-                contentLabel="Создание задачи"
+                onRequestClose={() => {
+                    setTaskModalIsOpen(false)
+                    setTitleError(false)
+                }}
+                style={{
+                    ...taskModalStyle,
+                    content: {
+                    ...taskModalStyle.content,
+                    height: 'auto',
+                    maxHeight: '90vh',
+                    overflow: 'hidden'
+                    }
+                }}
             >
                 <div className="flex flex-col gap-4">
-                    <h2 className="font-gilroy_bold text-[#0D062D] text-[32px] leading-[39px] mb-4">Создание задачи</h2>
                     
                     <div className="flex flex-col gap-2">
-                        <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Название задачи</label>
                         <input
                             type="text"
-                            className="bg-[#F1F4F9] rounded-lg p-2"
+                          placeholder="Задача"
+                            className={`bg-[#F1F4F9] rounded-lg p-2 ${titleError ? 'border border-red-500' : ''}`}
                             value={newTask.title}
-                            onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                            onChange={(e) => { 
+                            setNewTask({...newTask, title: e.target.value})
+                            setTitleError(false)
+                        }}
                         />
+                        {titleError && (
+                            <p className="text-red-500 text-sm mt-1">
+                                Пожалуйста, введите название
+                            </p>
+                        )}
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                        <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Описание</label>
-                        <textarea
-                            className="bg-[#F1F4F9] rounded-lg p-2 min-h-[100px]"
-                            value={newTask.description}
-                            onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                        />
-                    </div>
-
-                    <div className="flex gap-4">
-                        <div className="flex flex-col gap-2 flex-1">
-                            <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Дедлайн</label>
-                            <input
-                                type="date"
-                                className="bg-[#F1F4F9] rounded-lg p-2"
-                                value={newTask.deadline}
-                                onChange={(e) => setNewTask({...newTask, deadline: e.target.value})}
-                            />
-                        </div>
-
-                        <div className="flex flex-col gap-2 flex-1">
-                            <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Статус</label>
-                            <select
-                                className="bg-[#F1F4F9] rounded-lg p-2"
-                                value={newTask.status}
-                                onChange={(e) => setNewTask({...newTask, status: parseInt(e.target.value)})}
-                            >
-                                <option value={2}>Не начато</option>
-                                <option value={1}>В процессе</option>
-                                <option value={3}>Завершено</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Исполнитель</label>
-                        <select
-                            className="bg-[#F1F4F9] rounded-lg p-2"
-                            value={newTask.assignee}
-                            onChange={(e) => setNewTask({...newTask, assignee: e.target.value})}
-                        >
-                            <option value="">Выберите исполнителя</option>
-                            {users?.map((user) => (
-                                <option key={user.id} value={user.id}>
-                                    {user.full_name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Подзадачи</label>
+                    <div className="flex flex-col gap-2 flex-grow min-h-0">
                         <div className="flex gap-2">
                             <input
                                 type="text"
                                 className="bg-[#F1F4F9] rounded-lg p-2 flex-1"
                                 value={subtaskInput}
                                 onChange={(e) => setSubtaskInput(e.target.value)}
-                                placeholder="Введите подзадачу"
+                                placeholder="Подзадача"
                             />
                             <button
-                                className="bg-[#0077EB] text-white rounded-lg px-4"
+                                className=""
                                 onClick={handleAddSubtask}
                             >
-                                Добавить
+                            <img 
+                                src={GroupIcon} 
+                                alt="Иконка" 
+                                className="" // Регулируйте размер
+                            />
                             </button>
                         </div>
-                        <div className="flex flex-col gap-2 mt-2">
+                        <div className="flex flex-col gap-2 overflow-y-auto max-h-[100px]">
                             {newTask.subtasks.map((subtask, index) => (
                                 <div key={index} className="flex items-center gap-2 bg-[#F1F4F9] rounded-lg p-2">
                                     <span className="flex-1">{typeof subtask === 'string' ? subtask : subtask.title}</span>
@@ -852,15 +1041,52 @@ const Event = () => {
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-4 mt-4">
-                        <button
-                            className="bg-[#F1F4F9] text-[#0D062D] px-6 py-2 rounded-xl"
-                            onClick={() => setTaskModalIsOpen(false)}
+                    <div className="flex gap-4">
+                        <div className="flex flex-col flex-1">
+                            <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Дедлайн</label>
+                            <input
+                                type="date"
+                                className="bg-[#F1F4F9] rounded-lg p-2 w-[112px] h-[34px]"
+                                value={newTask.deadline || ''}
+                                onChange={(e) => setNewTask({...newTask, deadline: e.target.value})}
+                            />
+                        </div>
+                        {taskModalIsOpen ? (
+                            <input type="hidden" value="2" />
+                        ) : (
+                            <div className="flex flex-col gap-2 flex-1">
+                                <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Статус</label>
+                                <select
+                                    className="bg-[#F1F4F9] rounded-lg p-2"
+                                    value={newTask.status}
+                                    onChange={(e) => setNewTask({...newTask, status: parseInt(e.target.value)})}
+                                >
+                                    <option value={2}>Не начато</option>
+                                    <option value={1}>В процессе</option>
+                                    <option value={3}>Завершено</option>
+                                </select>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <select
+                            className="bg-[#F1F4F9] rounded-lg p-2"
+                            value={newTask.assignee}
+                            onChange={(e) => setNewTask({...newTask, assignee: e.target.value})}
                         >
-                            Отмена
-                        </button>
+                            <option value="">Ответственный</option>
+                            {users?.map((user) => (
+                                <option key={user.id} value={user.id}>
+                                    {user.full_name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>                    
+
+                    <div className="flex justify-center gap-4 mt-4">
                         <button
-                            className={`${buttonStyle}`}
+                            className='bg-[#00D166] text-white p-[7px] rounded-lg'
                             onClick={handleCreateTask}
                         >
                             Создать задачу
@@ -873,42 +1099,72 @@ const Event = () => {
             <Modal
                 isOpen={editTaskModalIsOpen}
                 onRequestClose={() => setEditTaskModalIsOpen(false)}
-                style={taskModalStyle}
-                contentLabel="Редактирование задачи"
+                style={{
+                    ...taskModalStyle,
+                    content: {
+                        ...taskModalStyle.content,
+                        height: 'auto',
+                        maxHeight: '90vh',
+                        overflow: 'hidden'
+                    }
+                }}
             >
                 <div className="flex flex-col gap-4">
-                    <h2 className="font-gilroy_bold text-[#0D062D] text-[32px] leading-[39px] mb-4">Редактирование задачи</h2>
-                    
                     <div className="flex flex-col gap-2">
-                        <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Название задачи</label>
                         <input
                             type="text"
+                            placeholder="Название"
                             className="bg-[#F1F4F9] rounded-lg p-2"
                             value={newTask.title}
                             onChange={(e) => setNewTask({...newTask, title: e.target.value})}
                         />
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                        <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Описание</label>
-                        <textarea
-                            className="bg-[#F1F4F9] rounded-lg p-2 min-h-[100px]"
-                            value={newTask.description}
-                            onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                        />
+                    <div className="flex flex-col gap-2 flex-grow min-h-0">
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                className="bg-[#F1F4F9] rounded-lg p-2 flex-1"
+                                value={subtaskInput}
+                                onChange={(e) => setSubtaskInput(e.target.value)}
+                                placeholder="Подзадача"
+                            />
+                            <button
+                                className=""
+                                onClick={handleAddSubtask}
+                            >
+                                <img 
+                                    src={GroupIcon} 
+                                    alt="Иконка" 
+                                    className=""
+                                />
+                            </button>
+                        </div>
+                        <div className="flex flex-col gap-2 overflow-y-auto max-h-[100px]">
+                            {newTask.subtasks.map((subtask, index) => (
+                                <div key={index} className="flex items-center gap-2 bg-[#F1F4F9] rounded-lg p-2">
+                                    <span className="flex-1">{typeof subtask === 'string' ? subtask : subtask.title}</span>
+                                    <button
+                                        className="text-red-500"
+                                        onClick={() => handleRemoveSubtask(index)}
+                                    >
+                                        Удалить
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     <div className="flex gap-4">
-                        <div className="flex flex-col gap-2 flex-1">
+                        <div className="flex flex-col flex-1">
                             <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Дедлайн</label>
                             <input
                                 type="date"
-                                className="bg-[#F1F4F9] rounded-lg p-2"
+                                className="bg-[#F1F4F9] rounded-lg p-2 w-[112px] h-[34px]"
                                 value={newTask.deadline || ''}
                                 onChange={(e) => setNewTask({...newTask, deadline: e.target.value})}
                             />
                         </div>
-
                         <div className="flex flex-col gap-2 flex-1">
                             <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Статус</label>
                             <select
@@ -924,13 +1180,12 @@ const Event = () => {
                     </div>
 
                     <div className="flex flex-col gap-2">
-                        <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Исполнитель</label>
                         <select
                             className="bg-[#F1F4F9] rounded-lg p-2"
                             value={newTask.assignee || ''}
                             onChange={(e) => setNewTask({...newTask, assignee: e.target.value})}
                         >
-                            <option value="">Выберите исполнителя</option>
+                            <option value="">Ответственный</option>
                             {users?.map((user) => (
                                 <option key={user.id} value={user.id}>
                                     {user.full_name}
@@ -939,39 +1194,7 @@ const Event = () => {
                         </select>
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                        <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Подзадачи</label>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                className="bg-[#F1F4F9] rounded-lg p-2 flex-1"
-                                value={subtaskInput}
-                                onChange={(e) => setSubtaskInput(e.target.value)}
-                                placeholder="Введите подзадачу"
-                            />
-                            <button
-                                className="bg-[#0077EB] text-white rounded-lg px-4"
-                                onClick={handleAddSubtask}
-                            >
-                                Добавить
-                            </button>
-                        </div>
-                        <div className="flex flex-col gap-2 mt-2">
-                            {newTask.subtasks.map((subtask, index) => (
-                                <div key={index} className="flex items-center gap-2 bg-[#F1F4F9] rounded-lg p-2">
-                                    <span className="flex-1">{typeof subtask === 'string' ? subtask : subtask.title}</span>
-                                    <button
-                                        className="text-red-500"
-                                        onClick={() => handleRemoveSubtask(index)}
-                                    >
-                                        Удалить
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-4 mt-4">
+                    <div className="flex justify-center gap-4 mt-4">
                         <button
                             className="bg-[#F1F4F9] text-[#0D062D] px-6 py-2 rounded-xl"
                             onClick={() => setEditTaskModalIsOpen(false)}
@@ -979,10 +1202,42 @@ const Event = () => {
                             Отмена
                         </button>
                         <button
-                            className={`${buttonStyle}`}
+                            className='bg-[#00D166] text-white p-[7px] rounded-lg'
                             onClick={handleUpdateTask}
                         >
                             Сохранить изменения
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Модальное окно для файлов */}
+            <Modal
+                isOpen={filesModalIsOpen}
+                onRequestClose={() => setFilesModalIsOpen(false)}
+                style={filesModalStyle}
+                contentLabel="Создание файла"
+            >
+                <div className="flex flex-col gap-4">
+                    <h2 className="font-gilroy_bold text-white text-[32px] leading-[39px] mb-4">Создание файла</h2>
+                    <div className="flex flex-col gap-4">
+                        <button
+                            className="bg-white text-[#0D062D] px-6 py-2 rounded-xl"
+                            onClick={() => handleCreateFile('doc', 'Новый документ', 'document')}
+                        >
+                            Создать документ
+                        </button>
+                        <button
+                            className="bg-white text-[#0D062D] px-6 py-2 rounded-xl"
+                            onClick={() => handleCreateFile('sheet', 'Новая таблица', 'spreadsheet')}
+                        >
+                            Создать таблицу
+                        </button>
+                        <button
+                            className="bg-white text-[#0D062D] px-6 py-2 rounded-xl"
+                            onClick={() => handleCreateFile('slide', 'Новая презентация', 'presentation')}
+                        >
+                            Создать презентацию
                         </button>
                     </div>
                 </div>

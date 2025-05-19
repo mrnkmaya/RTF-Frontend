@@ -75,16 +75,91 @@ const Profile = () => {
 
                 const tasksResponse = await axios.get(`${BASE_URL}/api/tasks/`, {
                     params: {
-                        user_id: viewedProfileId // Параметр для фильтрации задач по пользователю
+                        user_id: viewedProfileId
                     },
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     }
                 });
                 
+                // Обрабатываем задачи
+                const processedTasks = tasksResponse.data
+                    .filter(task => {
+                        try {
+                            let taskDetails;
+                            if (typeof task.task === 'string') {
+                                try {
+                                    taskDetails = JSON.parse(task.task);
+                                } catch (e) {
+                                    taskDetails = {
+                                        title: task.task,
+                                        description: '',
+                                        deadline: null,
+                                        status: task.status || 2,
+                                        user: task.user,
+                                        executor: task.executor,
+                                        subtasks: []
+                                    };
+                                }
+                            } else {
+                                taskDetails = task;
+                            }
+
+                            const userId = parseInt(viewedProfileId);
+                            return (
+                                taskDetails.user === userId || 
+                                taskDetails.executor === userId ||
+                                task.user === userId ||
+                                task.executor === userId
+                            );
+                        } catch (error) {
+                            console.error('Ошибка при обработке задачи:', error);
+                            return false;
+                        }
+                    })
+                    .map(task => {
+                        try {
+                            let taskDetails;
+                            if (typeof task.task === 'string') {
+                                try {
+                                    taskDetails = JSON.parse(task.task);
+                                } catch (e) {
+                                    // Если это не JSON, создаем объект из строки
+                                    taskDetails = {
+                                        title: task.task,
+                                        description: '',
+                                        deadline: null,
+                                        status: task.status || 2,
+                                        user: task.user,
+                                        executor: task.executor,
+                                        subtasks: []
+                                    };
+                                }
+                            } else {
+                                taskDetails = task;
+                            }
+
+                            return {
+                                id: task.id,
+                                title: taskDetails.title || 'Без названия',
+                                description: taskDetails.description || '',
+                                deadline: taskDetails.deadline || null,
+                                status: taskDetails.status || 2,
+                                user: taskDetails.user || null,
+                                executor: taskDetails.executor || task.executor || null,
+                                subtasks: taskDetails.subtasks || [],
+                                task: typeof task.task === 'string' ? task.task : JSON.stringify(taskDetails)
+                            };
+                        } catch (error) {
+                            console.error('Ошибка при обработке задачи:', error);
+                            return null;
+                        }
+                    })
+                    .filter(task => task !== null);
+                
                 setProfileData(response.data.profile);
                 setEvents(response.data.events || []);
-                setTasks(tasksResponse.data || []);
+                setTasks(processedTasks);
             } catch (error) {
                 console.error("Ошибка загрузки данных:", error);
                 if (error.response?.status === 403) {
@@ -385,117 +460,162 @@ const Profile = () => {
                         </p>
                     )
                 ): (
-                    tasks.length > 0 ? (
-                        <div className="grid grid-cols-3 gap-[23px]">
-                            {/* Колонка "Не начато" */}
-                            <div className="bg-[#F4F4F4] p-[10px] rounded-lg w-[287px]">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <div className="bg-[#FF7D56] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
-                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">Не начато</h3>
-                                </div>
+                    <div className="grid grid-cols-3 gap-[23px] h-[calc(100vh-300px)] overflow-hidden">
+                        {/* Колонка "Не начато" */}
+                        <div className="bg-[#F4F4F4] p-[10px] rounded-lg flex flex-col h-full overflow-hidden">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="bg-[#FF7D56] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
+                                <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">Не начато</h3>
+                            </div>
+                            <div className="overflow-y-auto flex-1 pr-2">
                                 {tasks
                                     .filter(task => task.status === 2)
                                     .map(task => (
-                                    <div key={task.id} className="flex flex-col bg-[#E2F7E2] p-3 rounded-xl mb-3 h-[150px]">
-                                        <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">
-                                        {task.title || 'Без названия'}
+                                    <div key={`task-${task.id}-not-started`} className="flex flex-col bg-white p-3 rounded-xl mb-3">
+                                        <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2">
+                                            {task.title || 'Без названия'}
                                         </h3>
-                                        <p className="text-[#0D062D] text-opacity-70 text-[14px] flex-grow overflow-hidden break-words">
-                                        <span className="line-clamp-2">
-                                            {task.description || 'Описание отсутствует'}
-                                        </span>
-                                        </p>
-                                        <div className="flex justify-between items-center mt-2">
-                                        {task.deadline && (
-                                            <p className="text-[#0D062D] text-opacity-50 text-xs">
-                                            {new Date(task.deadline).toLocaleDateString()}
-                                            </p>
+                                        {task.subtasks && task.subtasks.length > 0 && (
+                                            <div className="mb-2">
+                                                {task.subtasks.map((subtask, index) => (
+                                                    <div key={`subtask-${task.id}-${index}-not-started`} className="flex items-center gap-2 mb-1">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="w-4 h-4 rounded border-[#0D062D]"
+                                                            checked={typeof subtask === 'object' ? subtask.status === 3 : false}
+                                                            onChange={() => {}}
+                                                            readOnly
+                                                        />
+                                                        <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
+                                                            {typeof subtask === 'object' ? subtask.title : subtask}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         )}
+                                        <div className="flex justify-between items-center mt-2">
+                                            {task.deadline && (
+                                                <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] w-[80px] h-[23px] flex items-center justify-center">
+                                                    {new Date(task.deadline).toLocaleString('ru-RU', {
+                                                        day: '2-digit',
+                                                        month: '2-digit',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                        hour12: false
+                                                    }).replace(',', '')}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    ))}
+                                ))}
                                 {tasks.filter(task => task.status === 2).length === 0 && (
                                     <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
                                 )}
                             </div>
+                        </div>
 
-                            {/* Колонка "В работе" */}
-                            <div className="bg-[#F4F4F4] p-[10px] rounded-lg w-[287px]">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <div className="bg-[#FFDF56] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
-                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">В работе</h3>
-                                </div>
-                            {tasks
-                                .filter(task => task.status === 1)
-                                .map(task => (
-                                <div key={task.id} className="flex flex-col bg-[#E2F7E2] p-3 rounded-xl mb-3 h-[150px]">
-                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">
-                                    {task.title || 'Без названия'}
-                                    </h3>
-                                    <p className="text-[#0D062D] text-opacity-70 text-[14px] flex-grow overflow-hidden break-words">
-                                    <span className="line-clamp-2">
-                                        {task.description || 'Описание отсутствует'}
-                                    </span>
-                                    </p>
-                                    <div className="flex justify-between items-center mt-2">
-                                    <span className="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-800">
-                                        В работе
-                                    </span>
-                                    {task.deadline && (
-                                        <p className="text-[#0D062D] text-opacity-50 text-xs">
-                                        {new Date(task.deadline).toLocaleDateString()}
-                                        </p>
-                                    )}
-                                    </div>
-                                </div>
-                                ))}
-                            {tasks.filter(task => task.status === 1).length === 0 && (
-                                <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
-                            )}
+                        {/* Колонка "В работе" */}
+                        <div className="bg-[#F4F4F4] p-[10px] rounded-lg flex flex-col h-full overflow-hidden">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="bg-[#FFDF56] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
+                                <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">В работе</h3>
                             </div>
-
-                            {/* Колонка "Завершено" */}
-                            <div className="bg-[#F4F4F4] p-[10px] rounded-lg w-[287px]">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <div className="bg-[#40D033] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
-                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">Завершено</h3>
-                                </div>
-                            {tasks
-                                .filter(task => task.status === 3)
-                                .map(task => (
-                                <div key={task.id} className="flex flex-col bg-[#E2F7E2] p-3 rounded-xl mb-3 h-[150px]">
-                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">
-                                    {task.title || 'Без названия'}
-                                    </h3>
-                                    <p className="text-[#0D062D] text-opacity-70 text-[14px] flex-grow overflow-hidden break-words">
-                                    <span className="line-clamp-2">
-                                        {task.description || 'Описание отсутствует'}
-                                    </span>
-                                    </p>
-                                    <div className="flex justify-between items-center mt-2">
-                                    <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-800">
-                                        Завершено
-                                    </span>
-                                    {task.deadline && (
-                                        <p className="text-[#0D062D] text-opacity-50 text-xs">
-                                        {new Date(task.deadline).toLocaleDateString()}
-                                        </p>
-                                    )}
+                            <div className="overflow-y-auto flex-1 pr-2">
+                                {tasks
+                                    .filter(task => task.status === 1)
+                                    .map(task => (
+                                    <div key={task.id} className="flex flex-col bg-white p-3 rounded-xl mb-3">
+                                        <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2">
+                                            {task.title || 'Без названия'}
+                                        </h3>
+                                        {task.subtasks && task.subtasks.length > 0 && (
+                                            <div className="mb-2">
+                                                {task.subtasks.map((subtask, index) => (
+                                                    <div key={index} className="flex items-center gap-2 mb-1">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="w-4 h-4 rounded border-[#0D062D]"
+                                                            checked={typeof subtask === 'object' ? subtask.status === 3 : false}
+                                                        />
+                                                        <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
+                                                            {typeof subtask === 'object' ? subtask.title : subtask}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center mt-2">
+                                            {task.deadline && (
+                                                <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] w-[80px] h-[23px] flex items-center justify-center">
+                                                    {new Date(task.deadline).toLocaleString('ru-RU', {
+                                                        day: '2-digit',
+                                                        month: '2-digit',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                        hour12: false
+                                                    }).replace(',', '')}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
                                 ))}
-                            {tasks.filter(task => task.status === 3).length === 0 && (
-                                <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
-                            )}
+                                {tasks.filter(task => task.status === 1).length === 0 && (
+                                    <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
+                                )}
                             </div>
                         </div>
-                    ) : (
-                        <p className="text-[#0D062D] text-opacity-50">
-                            {isOwnProfile 
-                                ? 'У вас пока нет задач' 
-                                : 'У пользователя нет задач'}
-                        </p>
-                    )
+
+                        {/* Колонка "Завершено" */}
+                        <div className="bg-[#F4F4F4] p-[10px] rounded-lg flex flex-col h-full overflow-hidden">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="bg-[#40D033] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
+                                <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">Завершено</h3>
+                            </div>
+                            <div className="overflow-y-auto flex-1 pr-2">
+                                {tasks
+                                    .filter(task => task.status === 3)
+                                    .map(task => (
+                                    <div key={task.id} className="flex flex-col bg-white p-3 rounded-xl mb-3">
+                                        <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2">
+                                            {task.title || 'Без названия'}
+                                        </h3>
+                                        {task.subtasks && task.subtasks.length > 0 && (
+                                            <div className="mb-2">
+                                                {task.subtasks.map((subtask, index) => (
+                                                    <div key={index} className="flex items-center gap-2 mb-1">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="w-4 h-4 rounded border-[#0D062D]"
+                                                            checked={typeof subtask === 'object' ? subtask.status === 3 : false}
+                                                        />
+                                                        <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
+                                                            {typeof subtask === 'object' ? subtask.title : subtask}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center mt-2">
+                                            {task.deadline && (
+                                                <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] w-[80px] h-[23px] flex items-center justify-center">
+                                                    {new Date(task.deadline).toLocaleString('ru-RU', {
+                                                        day: '2-digit',
+                                                        month: '2-digit',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                        hour12: false
+                                                    }).replace(',', '')}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                                {tasks.filter(task => task.status === 3).length === 0 && (
+                                    <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
             
