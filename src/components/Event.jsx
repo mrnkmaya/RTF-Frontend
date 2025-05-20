@@ -10,6 +10,16 @@ import GroupIcon from '../photos/Group.svg';
 const buttonStyle = 'bg-[#0077EB] w-[160px] h-[40px] rounded-xl font-gilroy_semibold text-white text-xl p-2';
 const textStyleSemibold = 'font-gilroy_semibold text-[#0D062D]';
 
+const formatUserName = (fullName) => {
+    if (!fullName) return '';
+    const parts = fullName.split(' ');
+    if (parts.length < 2) return fullName;
+    
+    const lastName = parts[0];
+    const initials = parts.slice(1).map(name => name.charAt(0) + '.').join(' ');
+    return `${lastName} ${initials}`;
+};
+
 const taskModalStyle = {
     content: {
         top: '273.5px',
@@ -772,9 +782,9 @@ const Event = () => {
                         }
                     }>{isEditing ? 'Подтвердить' : 'Редактировать'}</button>
                 </div>
-                <div className="flex justify-between gap-6 h-[calc(100vh-180px)]">
+                <div className="flex justify-between gap-10 h-[calc(100vh-180px)]">
                     {/* Левая колонка с информацией о мероприятии */}
-                    <div className="w-[400px] flex-shrink-0">
+                    <div className="w-[400px] flex-shrink-0 mr-8">
                         <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Название</p>
                         {isEditing
                         ? <input className="mb-6 bg-[#F1F1F1] h-[40px] rounded pl-[10px] w-full" 
@@ -794,7 +804,7 @@ const Event = () => {
                         ? <input className="mb-6 bg-[#F1F1F1] h-[40px] rounded pl-[10px] w-full" 
                             type="textarea" value={`${event.description}`} 
                             onChange={(e) => {setEvent({...event, description: e.target.value })}}/>
-                        : <p className="font-gilroy_bold text-[24px] text-[#0D062D] leading-[30px] mb-[12px]">{event.description}</p>
+                        : <p className="font-gilroy_bold text-[24px] text-[#0D062D] leading-[30px] mb-[12px] line-clamp-3 overflow-hidden max-w-[395px]" style={{display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', wordBreak: 'break-word'}}>{event.description}</p>
                         }
                         <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Организаторы</p>
                         {isEditing
@@ -830,10 +840,18 @@ const Event = () => {
                             return <p key={`organizer-display-${org}`} className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[org]}</p>
                         })
                         }
-                        <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Папки</p>
+                        <div className="flex items-center gap-2 mb-4">
+                            <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Папки</p>
+                            <button 
+                                onClick={() => setCreateFolderModalIsOpen(true)}
+                                className="w-[32px] h-[32px] rounded-xl flex items-center justify-center"
+                            >
+                                <img src={GroupIcon} alt="Создать папку" className="w-5 h-5" />
+                            </button>
+                        </div>
                         {event.projects && event.projects.length > 0 && (
                             <div className="mt-4">
-                                <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">Папки</h3>
+                                
                                 <div className="grid grid-cols-3 gap-4">
                                     {event.projects.map(projectId => {
                                         const project = projects[projectId];
@@ -863,12 +881,6 @@ const Event = () => {
                                 </div>
                             </div>
                         )}
-                        <button 
-                            onClick={() => setCreateFolderModalIsOpen(true)}
-                            className={`${buttonStyle} mt-4`}
-                        >
-                            Создать папку
-                        </button>
                     </div>
 
                     {/* Центральная колонка с задачами */}
@@ -879,7 +891,7 @@ const Event = () => {
                                 <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">Задачи</h3>
                             </div>
                             <button 
-                                className="w-[32px] h-[32px] bg-[#0077EB] rounded-xl flex items-center justify-center"
+                                className="w-[32px] h-[32px] rounded-xl flex items-center justify-center"
                                 onClick={() => {
                                     setNewTask({
                                         title: '',
@@ -892,9 +904,7 @@ const Event = () => {
                                     setTaskModalIsOpen(true);
                                 }}
                             >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 4V20M4 12H20" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                                </svg>
+                                <img src={GroupIcon} alt="Добавить" className="w-5 h-5" />
                             </button>
                         </div>
                         <div className="flex flex-col gap-3 max-h-[510px] overflow-y-auto">
@@ -925,21 +935,19 @@ const Event = () => {
                                             </svg>
                                         </button>
                                         <div className="flex flex-col">
-                                            <div className="cursor-pointer" onClick={() => handleEditTask(task)}>
+                                            <div className="cursor-pointer group" onClick={() => handleEditTask(task)}>
                                                 <h3 
-                                                    className={`${textStyleSemibold} text-[20px] mb-2`}
+                                                    className={`${textStyleSemibold} text-[20px] mb-2 group-hover:underline cursor-pointer`}
                                                 >
                                                     {taskDetails?.title || 'Без названия'}
                                                 </h3>
                                             </div>
                                             {taskDetails?.subtasks && Array.isArray(taskDetails.subtasks) && taskDetails.subtasks.length > 0 && (
                                                 <div className="mb-2">
-                                                    <span className="text-[#0D062D] text-opacity-50 text-sm">Подзадачи:</span>
                                                     <ul className="list-disc list-inside mt-1">
-                                                        {taskDetails.subtasks.map((subtask, subIndex) => {
+                                                        {taskDetails.subtasks.slice(0, 5).map((subtask, subIndex) => {
                                                             const subtaskTitle = typeof subtask === 'string' ? subtask : (subtask?.title || '');
                                                             const subtaskStatus = typeof subtask === 'string' ? 2 : (subtask?.status || 2);
-                                                            
                                                             return (
                                                                 <li key={`subtask-${task.id}-${subIndex}`} className="flex items-center gap-2 mb-1">
                                                                     <div onClick={(e) => e.stopPropagation()}>
@@ -965,31 +973,62 @@ const Event = () => {
                                                                 </li>
                                                             );
                                                         })}
+                                                        {taskDetails.subtasks.length > 5 && (
+                                                            <li className="flex items-center justify-center text-[#0D062D] text-opacity-50 text-lg mt-1">...</li>
+                                                        )}
                                                     </ul>
                                                 </div>
                                             )}
                                             
-                                            {taskDetails?.user && (
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="text-[#0D062D] text-opacity-50 text-sm">Исполнитель:</span>
-                                                    <span className="text-[#0D062D] text-sm">{orgs[taskDetails.user]}</span>
-                                                </div>
-                                            )}
-
-                                            <div className="flex justify-between items-center mt-2">
-                                                <span className={`text-sm px-2 py-1 rounded-full ${
-                                                    taskDetails?.status === 1 ? 'bg-yellow-100 text-yellow-800' :
-                                                    taskDetails?.status === 2 ? 'bg-red-100 text-red-800' :
-                                                    'bg-green-100 text-green-800'
-                                                }`}>
-                                                    {taskDetails?.status === 1 ? 'В работе' :
-                                                     taskDetails?.status === 2 ? 'Не начато' :
-                                                     'Завершено'}
-                                                </span>
+                                            <div className="flex items-end justify-between mt-2 w-full">
+                                                {/* Дедлайн слева */}
                                                 {taskDetails?.deadline && (
-                                                    <p className="text-[#0D062D] text-opacity-50 text-xs">
-                                                        {new Date(taskDetails.deadline).toLocaleDateString()}
-                                                    </p>
+                                                    <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] w-[80px] h-[23px] flex items-center justify-center">
+                                                        {new Date(taskDetails.deadline).toLocaleString('ru-RU', {
+                                                            day: '2-digit',
+                                                            month: '2-digit',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit',
+                                                            hour12: false
+                                                        }).replace(',', '')}
+                                                    </div>
+                                                )}
+                                                {/* Статус по центру */}
+                                                <div className="flex items-center justify-center flex-1">
+                                                    <span style={{
+                                                        minWidth: taskDetails?.status === 1 ? 80 : taskDetails?.status === 2 ? 74 : 79,
+                                                        height: 23,
+                                                        borderRadius: 4,
+                                                        padding: '4px 8px',
+                                                        gap: 2,
+                                                        background: taskDetails?.status === 1 ? '#FEF7DA' : taskDetails?.status === 2 ? '#FBE0D7' : '#DAF2D3',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        fontWeight: 600,
+                                                        fontSize: 14,
+                                                        textAlign: 'center',
+                                                        overflow: 'hidden',
+                                                        whiteSpace: 'nowrap',
+                                                    }}>
+                                                        <span style={{
+                                                            display: 'inline-block',
+                                                            width: 10,
+                                                            height: 10,
+                                                            borderRadius: '50%',
+                                                            marginRight: 8,
+                                                            background: taskDetails?.status === 1 ? '#FAE06D' : taskDetails?.status === 2 ? '#EE845F' : '#6DCD4E',
+                                                            aspectRatio: '1/1',
+                                                            flexShrink: 0
+                                                        }}></span>
+                                                        {taskDetails?.status === 1 ? 'в процессе' : taskDetails?.status === 2 ? 'не начата' : 'выполнена'}
+                                                    </span>
+                                                </div>
+                                                {/* Исполнитель справа */}
+                                                {taskDetails?.executor && (
+                                                    <span className="bg-[#F4F4F4] px-2 py-1 rounded-xl font-gilroy_semibold text-[#0D062D] text-[15px] ml-2">
+                                                        {formatUserName(orgs[taskDetails.executor])}
+                                                    </span>
                                                 )}
                                             </div>
                                         </div>

@@ -229,33 +229,105 @@ const Profile = () => {
         }
     };
 
+    const handleUpdateSubtaskStatus = async (task, subtaskIndex, newStatus) => {
+        try {
+            const updatedSubtasks = [...(task.subtasks || [])];
+            const subtask = updatedSubtasks[subtaskIndex];
+            if (typeof subtask === 'string') {
+                updatedSubtasks[subtaskIndex] = {
+                    title: subtask,
+                    status: newStatus
+                };
+            } else {
+                updatedSubtasks[subtaskIndex] = {
+                    title: subtask.title,
+                    status: newStatus
+                };
+            }
+            // Собираем только нужные поля для task
+            const updatedTaskDetails = {
+                title: task.title,
+                description: task.description || '',
+                deadline: task.deadline || null,
+                status: task.status || 2,
+                user: task.executor,
+                event: task.event,
+                subtasks: updatedSubtasks
+            };
+            const taskData = {
+                task: JSON.stringify(updatedTaskDetails),
+                event: String(task.event),
+                user: task.executor
+            };
+            await axios.put(`${BASE_URL}/api/tasks/${task.id}/`, taskData, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            setTasks(prevTasks => prevTasks.map(t => t.id === task.id ? { ...t, subtasks: updatedSubtasks } : t));
+        } catch (error) {
+            alert('Не удалось обновить статус подзадачи');
+        }
+    };
+
     const renderTasks = () => {
         return (
             <div className="grid grid-cols-3 gap-4">
                 <div className="bg-white p-4 rounded-lg">
                     <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-4">Не начато</h3>
                     <div className="space-y-3">
-                        {tasks.filter(task => task.status === 2).map((task) => (
-                            <Link
-                                key={task.id}
-                                to={`/event?id=${task.event}`}
-                                className="block bg-[#F4F4F4] p-3 rounded-lg hover:bg-[#E4E4E4] transition-colors"
-                            >
-                                <h4 className="font-gilroy_semibold text-[#0D062D]">{task.title}</h4>
-                                <p className="text-[#0D062D] text-opacity-50 text-sm mt-1">{task.description}</p>
-                                {task.deadline && (
-                                    <p className="text-[#0D062D] text-opacity-50 text-xs mt-2">
-                                        Дедлайн: {new Date(task.deadline).toLocaleDateString()}
-                                    </p>
+                        {tasks.filter(task => String(task.executor) === String(viewedProfileId) && task.status === 2).map((task) => (
+                            <div key={task.id} className="flex flex-col bg-white p-3 rounded-xl mb-3 shadow hover:shadow-md transition-shadow">
+                                <Link to={`/event?id=${task.event}`}> 
+                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2 cursor-pointer hover:underline">{task.title || 'Без названия'}</h3>
+                                </Link>
+                                {task.subtasks && task.subtasks.length > 0 && (
+                                    <div className="mb-2">
+                                        {task.subtasks.map((subtask, index) => (
+                                            <div key={index} className="flex items-center gap-2 mb-1">
+                                                <input
+                                                    type="checkbox"
+                                                    className="w-4 h-4 rounded border-[#0D062D]"
+                                                    checked={typeof subtask === 'object' ? subtask.status === 3 : false}
+                                                    onChange={e => {
+                                                        const newStatus = e.target.checked ? 3 : 2;
+                                                        handleUpdateSubtaskStatus(
+                                                            task,
+                                                            index,
+                                                            newStatus
+                                                        );
+                                                    }}
+                                                />
+                                                <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
+                                                    {typeof subtask === 'object' ? subtask.title : subtask}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
-                            </Link>
+                                <div className="flex items-end mt-2 w-full">
+                                    {/* Дедлайн слева */}
+                                    {task.deadline && (
+                                        <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] w-[80px] h-[23px] flex items-center justify-center">
+                                            {new Date(task.deadline).toLocaleString('ru-RU', {
+                                                day: '2-digit',
+                                                month: '2-digit',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                                hour12: false
+                                            }).replace(',', '')}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         ))}
                     </div>
                 </div>
                 <div className="bg-white p-4 rounded-lg">
                     <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-4">В процессе</h3>
                     <div className="space-y-3">
-                        {tasks.filter(task => task.status === 1).map((task) => (
+                        {tasks.filter(task => String(task.executor) === String(viewedProfileId) && task.status === 1).map((task) => (
                             <Link
                                 key={task.id}
                                 to={`/event?id=${task.event}`}
@@ -275,10 +347,10 @@ const Profile = () => {
                 <div className="bg-white p-4 rounded-lg">
                     <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-4">Завершено</h3>
                     <div className="space-y-3">
-                        {tasks.filter(task => task.status === 3).map((task) => (
+                        {tasks.filter(task => String(task.executor) === String(viewedProfileId) && task.status === 3).map((task) => (
                             <Link
                                 key={task.id}
-                                to={`/event?id=${task.executor}`}
+                                to={`/event?id=${task.event}`}
                                 className="block bg-[#F4F4F4] p-3 rounded-lg hover:bg-[#E4E4E4] transition-colors"
                             >
                                 <h4 className="font-gilroy_semibold text-[#0D062D]">{task.title}</h4>
@@ -540,24 +612,12 @@ const Profile = () => {
                                 </div>
                                 <div className="overflow-y-auto flex-1 pr-2">
                                     {tasks
-                                        .filter(task => task.status === 2)
+                                        .filter(task => String(task.executor) === String(viewedProfileId) && task.status === 2)
                                         .map(task => (
-                                        <Link
-                                            key={`task-${task.id}-not-started`}
-                                            to={`/event?id=${task.event}`}
-                                            className="flex flex-col bg-white p-3 rounded-xl mb-3 hover:bg-[#F8F8F8] transition-colors"
-                                        >
-                                            <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2">
-                                                {task.title || 'Без названия'}
-                                            </h3>
-                                            {task.executor && (
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="text-[#0D062D] text-opacity-50 text-sm">Исполнитель:</span>
-                                                    <span className="text-[#0D062D] text-sm">
-                                                        {users[task.executor]?.full_name || 'Неизвестный пользователь'}
-                                                    </span>
-                                                </div>
-                                            )}
+                                        <div key={task.id} className="flex flex-col bg-white p-3 rounded-xl mb-3 shadow hover:shadow-md transition-shadow">
+                                            <Link to={`/event?id=${task.event}`}> 
+                                                <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2 cursor-pointer hover:underline">{task.title || 'Без названия'}</h3>
+                                            </Link>
                                             {task.subtasks && task.subtasks.length > 0 && (
                                                 <div className="mb-2">
                                                     {task.subtasks.map((subtask, index) => (
@@ -566,8 +626,14 @@ const Profile = () => {
                                                                 type="checkbox"
                                                                 className="w-4 h-4 rounded border-[#0D062D]"
                                                                 checked={typeof subtask === 'object' ? subtask.status === 3 : false}
-                                                                onChange={() => {}}
-                                                                readOnly
+                                                                onChange={e => {
+                                                                    const newStatus = e.target.checked ? 3 : 2;
+                                                                    handleUpdateSubtaskStatus(
+                                                                        task,
+                                                                        index,
+                                                                        newStatus
+                                                                    );
+                                                                }}
                                                             />
                                                             <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
                                                                 {typeof subtask === 'object' ? subtask.title : subtask}
@@ -576,7 +642,8 @@ const Profile = () => {
                                                     ))}
                                                 </div>
                                             )}
-                                            <div className="flex justify-between items-center mt-2">
+                                            <div className="flex items-end mt-2 w-full">
+                                                {/* Дедлайн слева */}
                                                 {task.deadline && (
                                                     <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] w-[80px] h-[23px] flex items-center justify-center">
                                                         {new Date(task.deadline).toLocaleString('ru-RU', {
@@ -589,9 +656,9 @@ const Profile = () => {
                                                     </div>
                                                 )}
                                             </div>
-                                        </Link>
+                                        </div>
                                     ))}
-                                    {tasks.filter(task => task.status === 2).length === 0 && (
+                                    {tasks.filter(task => String(task.executor) === String(viewedProfileId) && task.status === 2).length === 0 && (
                                         <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
                                     )}
                                 </div>
@@ -605,7 +672,7 @@ const Profile = () => {
                                 </div>
                                 <div className="overflow-y-auto flex-1 pr-2">
                                     {tasks
-                                        .filter(task => task.status === 1)
+                                        .filter(task => String(task.executor) === String(viewedProfileId) && task.status === 1)
                                         .map(task => (
                                         <Link
                                             key={task.id}
@@ -615,14 +682,6 @@ const Profile = () => {
                                             <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2">
                                                 {task.title || 'Без названия'}
                                             </h3>
-                                            {task.executor && (
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="text-[#0D062D] text-opacity-50 text-sm">Исполнитель:</span>
-                                                    <span className="text-[#0D062D] text-sm">
-                                                        {users[task.executor]?.full_name || 'Неизвестный пользователь'}
-                                                    </span>
-                                                </div>
-                                            )}
                                             {task.subtasks && task.subtasks.length > 0 && (
                                                 <div className="mb-2">
                                                     {task.subtasks.map((subtask, index) => (
@@ -631,8 +690,14 @@ const Profile = () => {
                                                                 type="checkbox"
                                                                 className="w-4 h-4 rounded border-[#0D062D]"
                                                                 checked={typeof subtask === 'object' ? subtask.status === 3 : false}
-                                                                onChange={() => {}}
-                                                                readOnly
+                                                                onChange={e => {
+                                                                    const newStatus = e.target.checked ? 3 : 2;
+                                                                    handleUpdateSubtaskStatus(
+                                                                        task,
+                                                                        index,
+                                                                        newStatus
+                                                                    );
+                                                                }}
                                                             />
                                                             <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
                                                                 {typeof subtask === 'object' ? subtask.title : subtask}
@@ -656,7 +721,7 @@ const Profile = () => {
                                             </div>
                                         </Link>
                                     ))}
-                                    {tasks.filter(task => task.status === 1).length === 0 && (
+                                    {tasks.filter(task => String(task.executor) === String(viewedProfileId) && task.status === 1).length === 0 && (
                                         <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
                                     )}
                                 </div>
@@ -670,7 +735,7 @@ const Profile = () => {
                                 </div>
                                 <div className="overflow-y-auto flex-1 pr-2">
                                     {tasks
-                                        .filter(task => task.status === 3)
+                                        .filter(task => String(task.executor) === String(viewedProfileId) && task.status === 3)
                                         .map(task => (
                                         <Link
                                             key={task.id}
@@ -680,14 +745,6 @@ const Profile = () => {
                                             <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2">
                                                 {task.title || 'Без названия'}
                                             </h3>
-                                            {task.executor && (
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="text-[#0D062D] text-opacity-50 text-sm">Исполнитель:</span>
-                                                    <span className="text-[#0D062D] text-sm">
-                                                        {users[task.executor]?.full_name || 'Неизвестный пользователь'}
-                                                    </span>
-                                                </div>
-                                            )}
                                             {task.subtasks && task.subtasks.length > 0 && (
                                                 <div className="mb-2">
                                                     {task.subtasks.map((subtask, index) => (
@@ -696,8 +753,14 @@ const Profile = () => {
                                                                 type="checkbox"
                                                                 className="w-4 h-4 rounded border-[#0D062D]"
                                                                 checked={typeof subtask === 'object' ? subtask.status === 3 : false}
-                                                                onChange={() => {}}
-                                                                readOnly
+                                                                onChange={e => {
+                                                                    const newStatus = e.target.checked ? 3 : 2;
+                                                                    handleUpdateSubtaskStatus(
+                                                                        task,
+                                                                        index,
+                                                                        newStatus
+                                                                    );
+                                                                }}
                                                             />
                                                             <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
                                                                 {typeof subtask === 'object' ? subtask.title : subtask}
@@ -721,7 +784,7 @@ const Profile = () => {
                                             </div>
                                         </Link>
                                     ))}
-                                    {tasks.filter(task => task.status === 3).length === 0 && (
+                                    {tasks.filter(task => String(task.executor) === String(viewedProfileId) && task.status === 3).length === 0 && (
                                         <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
                                     )}
                                 </div>

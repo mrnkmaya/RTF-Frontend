@@ -177,14 +177,14 @@ const Folder = () => {
                             {project.files?.length > 0 ? (
                                 project.files.map((file) => (
                                     <div key={file.id} className="flex items-center mb-1">
-                                        <a 
-                                            href={file.file_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
+                                    <a 
+                                        href={file.file_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
                                             className="bg-[#1F4466] w-[200px] h-fit rounded-xl px-[12px] py-[8px] text-white font-gilroy_semibold text-[20px] leading-[25px] text-center mr-2"
-                                        >
-                                            {file.file_name}
-                                        </a>
+                                    >
+                                        {file.file_name}
+                                    </a>
                                         <button
                                             className="text-red-500 hover:text-red-700 text-xl ml-2"
                                             onClick={async () => {
@@ -255,14 +255,14 @@ const Folder = () => {
                                     <option value="slide">Презентация</option>
                                     <option value="form">Форма</option>
                                 </select>
-                                <button 
+                            <button 
                                     className={greenButtonStyle}
                                     style={{fontFamily: 'Gilroy', fontWeight: 500, letterSpacing: 0}}
-                                    onClick={createFile}
-                                    disabled={!fileName.trim() || loading}
-                                >
+                                onClick={createFile}
+                                disabled={!fileName.trim() || loading}
+                            >
                                     {loading ? 'Создание...' : 'Создать файл'}
-                                </button>
+                            </button>
                             </div>
                         </Modal>
                     </div>
