@@ -534,13 +534,20 @@ const Event = () => {
         
         try {
             const taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
+            let executorId = task.executor || taskDetails.executor || taskDetails.user || '';
+            // Если executorId есть, приводим к строке, иначе оставляем пустую строку
+            executorId = executorId ? String(executorId) : '';
+            // Проверяем, есть ли такой пользователь в списке users
+            if (executorId && !users[executorId]) {
+                executorId = '';
+            }
             setSelectedTask(task);
             setNewTask({
                 title: taskDetails?.title || '',
                 description: taskDetails?.description || '',
                 deadline: taskDetails?.deadline || '',
                 status: taskDetails?.status || 2,
-                assignee: taskDetails?.user || '',
+                assignee: executorId,
                 subtasks: taskDetails?.subtasks?.map(st => ({
                     title: typeof st === 'string' ? st : st.title,
                     status: typeof st === 'string' ? 2 : (st.status || 2)

@@ -4,6 +4,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import avatar_placeholder from "../photos/avatar_placeholder.png";
 import { BASE_URL } from "./Globals";
 import { Link } from "react-router-dom";
+import Modal from "react-modal";
 
 const H3_STYLE = 'font-gilroy_semibold text-[#0D062D] opacity-50 text-[16px] leading-[19px] mb-[6px]';
 const DATA_STYLE = 'font-gilroy_semibold text-[#0D062D] text-[24px] leading-[17px]';
@@ -23,6 +24,92 @@ const Profile = () => {
     const [activeTab, setActiveTab] = useState('events');
     const [users, setUsers] = useState({});
     const [project, setProject] = useState([]);
+    const [selectedTask, setSelectedTask] = useState(null);
+    const [editTaskModalIsOpen, setEditTaskModalIsOpen] = useState(false);
+    const [newTask, setNewTask] = useState({
+        title: '',
+        description: '',
+        deadline: '',
+        status: 2,
+        assignee: '',
+        subtasks: []
+    });
+
+    const updateSubtaskStatus = async (taskId, subtaskIndex, newStatus) => {
+        try {
+            // Получаем текущую задачу
+            const currentTask = tasks.find(t => t.id === taskId);
+            if (!currentTask) return;
+
+            // Создаем копию подзадач с обновленным статусом
+            const updatedSubtasks = currentTask.subtasks.map((subtask, idx) => {
+                if (idx === subtaskIndex) {
+                    return {
+                        ...subtask,
+                        status: newStatus
+                    };
+                }
+                return subtask;
+            });
+
+            // Получаем текущие данные задачи
+            let existingTaskData;
+            try {
+                const taskResponse = await axios.get(`${BASE_URL}/api/tasks/${taskId}/`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                existingTaskData = taskResponse.data;
+            } catch (error) {
+                console.error('Ошибка при получении данных задачи:', error);
+                existingTaskData = currentTask;
+            }
+
+            // Создаем объект задачи, сохраняя существующего ответственного
+            const taskObject = {
+                title: currentTask.title,
+                description: currentTask.description || '',
+                deadline: currentTask.deadline,
+                status: currentTask.status,
+                executor: existingTaskData.executor || currentTask.executor, // Используем существующего ответственного
+                event: currentTask.event,
+                subtasks: updatedSubtasks
+            };
+
+            // Отправляем данные на сервер
+            const response = await axios.put(`${BASE_URL}/api/tasks/${taskId}/`, {
+                task: JSON.stringify(taskObject),
+                status: currentTask.status,
+                executor: existingTaskData.executor || currentTask.executor, // Используем существующего ответственного
+                event: currentTask.event
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            // Обновляем локальное состояние
+            const updatedTasks = tasks.map(t => {
+                if (t.id === taskId) {
+                    return {
+                        ...t,
+                        subtasks: updatedSubtasks,
+                        task: JSON.stringify(taskObject),
+                        executor: existingTaskData.executor || currentTask.executor // Обновляем локальное состояние с правильным ответственным
+                    };
+                }
+                return t;
+            });
+            setTasks(updatedTasks);
+
+            return response.data;
+        } catch (error) {
+            console.error('Ошибка при обновлении статуса подзадачи:', error);
+            throw error;
+        }
+    };
 
     const currentUserAccessLevel = parseInt(localStorage.getItem('access_level') || '1');
     const currentUserProfileId = localStorage.getItem('profile_id');
@@ -60,7 +147,7 @@ const Profile = () => {
     };
 
     const editableFields = getEditableFields();
-
+{/*ФУНКИЦИ ЗАГРУЗКИ ДАННЫХ!! не трогать*/}
     useEffect(() => {
         const fetchProfileData = async () => {
             setIsLoading(true);
@@ -97,7 +184,7 @@ const Profile = () => {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     }
                 });
-
+                
                 console.log('Raw task data:', tasksResponse.data);
 
                 const proj = await axios.get(`${BASE_URL}/projects/`, {
@@ -177,6 +264,7 @@ const Profile = () => {
         projects[pro.id] = pro;
     }
 
+    {/*ФУНКИЦИ ЗАГРУЗКИ ДАННЫХ!! не трогать*/}
     const handleSave = async () => {
         setIsLoading(true);
         try {
@@ -223,51 +311,122 @@ const Profile = () => {
         }
     };
 
+{/*ФУНКИЦИ ЗАГРУЗКИ ДАННЫХ!! не трогать*/}
     const handleFileChange = (e) => {
         if (e.target.files && e.target.files[0]) {
             setProfileData({...profileData, profile_photo: e.target.files[0]});
         }
     };
 
-    const handleUpdateSubtaskStatus = async (task, subtaskIndex, newStatus) => {
+    const handleEditTask = (task) => {
+        if (!task) return;
+        
         try {
-            const updatedSubtasks = [...(task.subtasks || [])];
-            const subtask = updatedSubtasks[subtaskIndex];
-            if (typeof subtask === 'string') {
-                updatedSubtasks[subtaskIndex] = {
-                    title: subtask,
-                    status: newStatus
-                };
-            } else {
-                updatedSubtasks[subtaskIndex] = {
-                    title: subtask.title,
-                    status: newStatus
-                };
-            }
-            // Собираем только нужные поля для task
-            const updatedTaskDetails = {
-                title: task.title,
-                description: task.description || '',
-                deadline: task.deadline || null,
-                status: task.status || 2,
-                user: task.executor,
-                event: task.event,
-                subtasks: updatedSubtasks
+            // Получаем данные задачи
+            const taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
+            
+            // Получаем ID ответственного из разных возможных мест
+            const executorId = task.executor || taskDetails.executor || taskDetails.user || '';
+            
+            console.log('Данные задачи:', task);
+            console.log('Детали задачи:', taskDetails);
+            console.log('ID ответственного:', executorId);
+            
+            setSelectedTask(task);
+            setNewTask({
+                title: taskDetails?.title || '',
+                description: taskDetails?.description || '',
+                deadline: taskDetails?.deadline || '',
+                status: taskDetails?.status || 2,
+                assignee: executorId.toString(), // Преобразуем ID в строку
+                subtasks: taskDetails?.subtasks?.map(st => ({
+                    title: typeof st === 'string' ? st : st.title,
+                    status: typeof st === 'string' ? 2 : (st.status || 2)
+                })) || []
+            });
+            setEditTaskModalIsOpen(true);
+        } catch (error) {
+            console.error('Ошибка при обработке задачи для редактирования:', error);
+            setSelectedTask(task);
+            setNewTask({
+                title: '',
+                description: '',
+                deadline: '',
+                status: 2,
+                assignee: '',
+                subtasks: []
+            });
+            setEditTaskModalIsOpen(true);
+        }
+    };
+
+    const handleUpdateTask = () => {
+        if (!selectedTask) return;
+        
+        try {
+            const taskDetails = typeof selectedTask.task === 'string' ? JSON.parse(selectedTask.task) : selectedTask;
+            
+            const updatedTaskData = {
+                title: newTask.title,
+                description: newTask.description || '',
+                deadline: newTask.deadline || null,
+                status: newTask.status || 2,
+                executor: newTask.assignee || null,
+                event: selectedTask.event,
+                subtasks: newTask.subtasks.map(subtask => {
+                    if (typeof subtask === 'string') {
+                        return {
+                            title: subtask,
+                            status: 2
+                        };
+                    }
+                    return {
+                        title: subtask.title || '',
+                        status: subtask.status || 2
+                    };
+                })
             };
+
             const taskData = {
-                task: JSON.stringify(updatedTaskDetails),
-                event: String(task.event),
-                user: task.executor
+                task: JSON.stringify(updatedTaskData),
+                event: selectedTask.event,
+                executor: newTask.assignee || null
             };
-            await axios.put(`${BASE_URL}/api/tasks/${task.id}/`, taskData, {
+
+            console.log('Отправляемые данные:', taskData);
+
+            axios.put(`${BASE_URL}/api/tasks/${selectedTask.id}/`, taskData, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
                     'Content-Type': 'application/json'
                 }
+            })
+            .then(response => {
+                const updatedTaskDetails = JSON.parse(response.data.task);
+                const updatedTask = {
+                    id: response.data.id,
+                    title: updatedTaskDetails.title,
+                    description: updatedTaskDetails.description,
+                    deadline: updatedTaskDetails.deadline,
+                    status: updatedTaskDetails.status,
+                    user: updatedTaskDetails.user,
+                    executor: updatedTaskDetails.executor || updatedTaskDetails.user,
+                    subtasks: updatedTaskDetails.subtasks || [],
+                    task: response.data.task
+                };
+
+                setTasks(prevTasks => prevTasks.map(t => 
+                    t.id === selectedTask.id ? updatedTask : t
+                ));
+                setEditTaskModalIsOpen(false);
+            })
+            .catch(error => {
+                console.error('Ошибка при обновлении задачи:', error);
+                alert('Не удалось обновить задачу. Пожалуйста, попробуйте снова.');
             });
-            setTasks(prevTasks => prevTasks.map(t => t.id === task.id ? { ...t, subtasks: updatedSubtasks } : t));
         } catch (error) {
-            alert('Не удалось обновить статус подзадачи');
+            console.error('Ошибка при обработке задачи:', error);
+            alert('Не удалось обновить задачу. Пожалуйста, попробуйте снова.');
         }
     };
 
@@ -277,61 +436,31 @@ const Profile = () => {
                 <div className="bg-white p-4 rounded-lg">
                     <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-4">Не начато</h3>
                     <div className="space-y-3">
-                        {tasks.filter(task => String(task.executor) === String(viewedProfileId) && task.status === 2).map((task) => (
-                            <div key={task.id} className="flex flex-col bg-white p-3 rounded-xl mb-3 shadow hover:shadow-md transition-shadow">
-                                <Link to={`/event?id=${task.event}`}> 
-                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2 cursor-pointer hover:underline">{task.title || 'Без названия'}</h3>
-                                </Link>
-                                {task.subtasks && task.subtasks.length > 0 && (
-                                    <div className="mb-2">
-                                        {task.subtasks.map((subtask, index) => (
-                                            <div key={index} className="flex items-center gap-2 mb-1">
-                                                <input
-                                                    type="checkbox"
-                                                    className="w-4 h-4 rounded border-[#0D062D]"
-                                                    checked={typeof subtask === 'object' ? subtask.status === 3 : false}
-                                                    onChange={e => {
-                                                        const newStatus = e.target.checked ? 3 : 2;
-                                                        handleUpdateSubtaskStatus(
-                                                            task,
-                                                            index,
-                                                            newStatus
-                                                        );
-                                                    }}
-                                                />
-                                                <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
-                                                    {typeof subtask === 'object' ? subtask.title : subtask}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
+                        {tasks.filter(task => task.status === 2 && String(task.executor) === String(viewedProfileId)).map((task) => (
+                            <Link
+                                key={task.id}
+                                to={`/event?id=${task.event}`}
+                                className="block bg-[#F4F4F4] p-3 rounded-lg"
+                            >
+                                <h4 className="font-gilroy_semibold text-[#0D062D]">{task.title}</h4>
+                                <p className="text-[#0D062D] text-opacity-50 text-sm mt-1">{task.description}</p>
+                                {task.deadline && (
+                                    <p className="text-[#0D062D] text-opacity-50 text-xs mt-2">
+                                        Дедлайн: {new Date(task.deadline).toLocaleDateString()}
+                                    </p>
                                 )}
-                                <div className="flex items-end mt-2 w-full">
-                                    {/* Дедлайн слева */}
-                                    {task.deadline && (
-                                        <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] w-[80px] h-[23px] flex items-center justify-center">
-                                            {new Date(task.deadline).toLocaleString('ru-RU', {
-                                                day: '2-digit',
-                                                month: '2-digit',
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                                hour12: false
-                                            }).replace(',', '')}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            </Link>
                         ))}
                     </div>
                 </div>
                 <div className="bg-white p-4 rounded-lg">
                     <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-4">В процессе</h3>
                     <div className="space-y-3">
-                        {tasks.filter(task => String(task.executor) === String(viewedProfileId) && task.status === 1).map((task) => (
+                        {tasks.filter(task => task.status === 1 && String(task.executor) === String(viewedProfileId)).map((task) => (
                             <Link
                                 key={task.id}
                                 to={`/event?id=${task.event}`}
-                                className="block bg-[#F4F4F4] p-3 rounded-lg hover:bg-[#E4E4E4] transition-colors"
+                                className="block bg-[#F4F4F4] p-3 rounded-lg"
                             >
                                 <h4 className="font-gilroy_semibold text-[#0D062D]">{task.title}</h4>
                                 <p className="text-[#0D062D] text-opacity-50 text-sm mt-1">{task.description}</p>
@@ -347,11 +476,11 @@ const Profile = () => {
                 <div className="bg-white p-4 rounded-lg">
                     <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-4">Завершено</h3>
                     <div className="space-y-3">
-                        {tasks.filter(task => String(task.executor) === String(viewedProfileId) && task.status === 3).map((task) => (
+                        {tasks.filter(task => task.status === 3 && String(task.executor) === String(viewedProfileId)).map((task) => (
                             <Link
                                 key={task.id}
-                                to={`/event?id=${task.event}`}
-                                className="block bg-[#F4F4F4] p-3 rounded-lg hover:bg-[#E4E4E4] transition-colors"
+                                to={`/event?id=${task.executor}`}
+                                className="block bg-[#F4F4F4] p-3 rounded-lg"
                             >
                                 <h4 className="font-gilroy_semibold text-[#0D062D]">{task.title}</h4>
                                 <p className="text-[#0D062D] text-opacity-50 text-sm mt-1">{task.description}</p>
@@ -574,225 +703,436 @@ const Profile = () => {
                     </div>
 
                     {activeTab === 'events' ? (
-                        events.length > 0 ? (
-                            <div className="grid grid-cols-3 gap-6">
-                                {events.map(event => (
-                                    <Link 
-                                        key={event.id} 
-                                        to={`/event?id=${event.id}`} 
-                                        className="flex flex-col bg-[#CCE8FF] p-3 rounded-xl hover:bg-[#b3d9ff] transition-colors h-[150px]"
-                                    >
-                                        <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">{event.title}</h3>
-                                        
-                                        <p className="text-[#0D062D] text-opacity-70 text-[14px] flex-grow overflow-hidden break-words">
-                                            <span className="line-clamp-2">
-                                                {event.description}
-                                            </span>
-                                        </p>
-                                        <p className="text-[#0D062D] text-opacity-50 text-xs mt-2">
-                                            {new Date(event.date).toLocaleDateString()}
-                                        </p>
-                                    </Link>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-[#0D062D] text-opacity-50">
-                                {isOwnProfile 
-                                    ? 'У вас пока нет мероприятий' 
-                                    : 'У пользователя нет мероприятий'}
-                            </p>
-                        )
+                    events.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-6">
+                            {events.map(event => (
+                            <Link 
+                                key={event.id} 
+                                to={`/event?id=${event.id}`} 
+                                className="flex flex-col bg-[#CCE8FF] p-3 rounded-xl hover:bg-[#b3d9ff] transition-colors h-[150px]"
+                            >
+                                <h3 className="font-gilroy_semibold text-[#0D062D] text-xl mb-2">{event.title}</h3>
+                                
+                                <p className="text-[#0D062D] text-opacity-70 text-[14px] flex-grow overflow-hidden break-words">
+                                                    <span className="line-clamp-2">
+                                                        {event.description}
+                                                    </span>
+                                                </p>
+                                <p className="text-[#0D062D] text-opacity-50 text-xs mt-2">
+                                    {new Date(event.date).toLocaleDateString()}
+                                </p>
+                            </Link>
+                        ))}
+                        </div>
                     ) : (
-                        <div className="grid grid-cols-3 gap-[23px] h-[calc(100vh-300px)] overflow-hidden">
-                            {/* Колонка "Не начато" */}
-                            <div className="bg-[#F4F4F4] p-[10px] rounded-lg flex flex-col h-full overflow-hidden">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <div className="bg-[#FF7D56] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
-                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">Не начато</h3>
-                                </div>
-                                <div className="overflow-y-auto flex-1 pr-2">
-                                    {tasks
-                                        .filter(task => String(task.executor) === String(viewedProfileId) && task.status === 2)
-                                        .map(task => (
-                                        <div key={task.id} className="flex flex-col bg-white p-3 rounded-xl mb-3 shadow hover:shadow-md transition-shadow">
-                                            <Link to={`/event?id=${task.event}`}> 
-                                                <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2 cursor-pointer hover:underline">{task.title || 'Без названия'}</h3>
+                        <p className="text-[#0D062D] text-opacity-50">
+                            {isOwnProfile 
+                                ? 'У вас пока нет мероприятий' 
+                                : 'У пользователя нет мероприятий'}
+                        </p>
+                    )
+                    ) : (
+                    <div className="grid grid-cols-3 gap-[23px] h-[calc(100vh-300px)] overflow-hidden">
+                        {/* Колонка "Не начато" */}
+                        <div className="bg-[#F4F4F4] p-[10px] rounded-lg flex flex-col h-full overflow-hidden">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="bg-[#FF7D56] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
+                                <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">Не начато</h3>
+                            </div>
+                            <div className="overflow-y-auto flex-1 pr-2">
+                                {tasks
+                                    .filter(task => task.status === 2 && String(task.executor) === String(viewedProfileId))
+                                    .map(task => (
+                                        <div
+                                            key={`task-${task.id}-not-started`}
+                                            className="flex flex-col bg-white p-3 rounded-xl mb-3"
+                                        >
+                                            <Link to={`/event?id=${task.event}`} className="block mb-2">
+                                                <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] hover:underline">
+                                            {task.title || 'Без названия'}
+                                        </h3>
                                             </Link>
-                                            {task.subtasks && task.subtasks.length > 0 && (
-                                                <div className="mb-2">
-                                                    {task.subtasks.map((subtask, index) => (
+                                            <div className="cursor-pointer" onClick={() => handleEditTask(task)}>
+                                                <span className="text-[#0D062D] text-opacity-50 text-sm transition-all duration-200 hover:text-green-600 hover:underline cursor-pointer">Редактировать</span>
+                                            </div>
+                                        {task.subtasks && task.subtasks.length > 0 && (
+                                            <div className="mb-2">
+                                                {task.subtasks.map((subtask, index) => (
                                                         <div key={index} className="flex items-center gap-2 mb-1">
-                                                            <input
-                                                                type="checkbox"
-                                                                className="w-4 h-4 rounded border-[#0D062D]"
-                                                                checked={typeof subtask === 'object' ? subtask.status === 3 : false}
-                                                                onChange={e => {
-                                                                    const newStatus = e.target.checked ? 3 : 2;
-                                                                    handleUpdateSubtaskStatus(
-                                                                        task,
-                                                                        index,
-                                                                        newStatus
-                                                                    );
+                                                        <input
+                                                            type="checkbox"
+                                                            className="w-4 h-4 rounded border-[#0D062D]"
+                                                            checked={typeof subtask === 'object' ? subtask.status === 3 : false}
+                                                                onChange={async (e) => {
+                                                                    try {
+                                                                        const newStatus = e.target.checked ? 3 : 2;
+                                                                        // Сначала обновляем локальное состояние для мгновенного отклика
+                                                                        const updatedTasks = tasks.map(t => {
+                                                                            if (t.id === task.id) {
+                                                                                const updatedSubtasks = t.subtasks.map((s, i) => {
+                                                                                    if (i === index) {
+                                                                                        return {
+                                                                                            ...s,
+                                                                                            status: newStatus
+                                                                                        };
+                                                                                    }
+                                                                                    return s;
+                                                                                });
+                                                                                return { ...t, subtasks: updatedSubtasks };
+                                                                            }
+                                                                            return t;
+                                                                        });
+                                                                        setTasks(updatedTasks);
+                                                                        
+                                                                        // Затем отправляем изменения на сервер
+                                                                        await updateSubtaskStatus(task.id, index, newStatus);
+                                                                    } catch (error) {
+                                                                        console.error('Ошибка при обновлении статуса:', error);
+                                                                        // В случае ошибки возвращаем предыдущее состояние
+                                                                        const revertedTasks = tasks.map(t => {
+                                                                            if (t.id === task.id) {
+                                                                                const revertedSubtasks = t.subtasks.map((s, i) => {
+                                                                                    if (i === index) {
+                                                                                        return {
+                                                                                            ...s,
+                                                                                            status: e.target.checked ? 2 : 3
+                                                                                        };
+                                                                                    }
+                                                                                    return s;
+                                                                                });
+                                                                                return { ...t, subtasks: revertedSubtasks };
+                                                                            }
+                                                                            return t;
+                                                                        });
+                                                                        setTasks(revertedTasks);
+                                                                    }
                                                                 }}
-                                                            />
-                                                            <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
-                                                                {typeof subtask === 'object' ? subtask.title : subtask}
-                                                            </span>
-                                                        </div>
-                                                    ))}
+                                                        />
+                                                        <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
+                                                            {typeof subtask === 'object' ? subtask.title : subtask}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center mt-2">
+                                            {task.deadline && (
+                                                <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] w-[80px] h-[23px] flex items-center justify-center">
+                                                    {new Date(task.deadline).toLocaleString('ru-RU', {
+                                                        day: '2-digit',
+                                                        month: '2-digit',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                        hour12: false
+                                                    }).replace(',', '')}
                                                 </div>
                                             )}
-                                            <div className="flex items-end mt-2 w-full">
-                                                {/* Дедлайн слева */}
-                                                {task.deadline && (
-                                                    <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] w-[80px] h-[23px] flex items-center justify-center">
-                                                        {new Date(task.deadline).toLocaleString('ru-RU', {
-                                                            day: '2-digit',
-                                                            month: '2-digit',
-                                                            hour: '2-digit',
-                                                            minute: '2-digit',
-                                                            hour12: false
-                                                        }).replace(',', '')}
-                                                    </div>
-                                                )}
-                                            </div>
                                         </div>
-                                    ))}
-                                    {tasks.filter(task => String(task.executor) === String(viewedProfileId) && task.status === 2).length === 0 && (
-                                        <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Колонка "В работе" */}
-                            <div className="bg-[#F4F4F4] p-[10px] rounded-lg flex flex-col h-full overflow-hidden">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <div className="bg-[#FFDF56] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
-                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">В работе</h3>
-                                </div>
-                                <div className="overflow-y-auto flex-1 pr-2">
-                                    {tasks
-                                        .filter(task => String(task.executor) === String(viewedProfileId) && task.status === 1)
-                                        .map(task => (
-                                        <Link
-                                            key={task.id}
-                                            to={`/event?id=${task.event}`}
-                                            className="flex flex-col bg-white p-3 rounded-xl mb-3 hover:bg-[#F8F8F8] transition-colors"
-                                        >
-                                            <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2">
-                                                {task.title || 'Без названия'}
-                                            </h3>
-                                            {task.subtasks && task.subtasks.length > 0 && (
-                                                <div className="mb-2">
-                                                    {task.subtasks.map((subtask, index) => (
-                                                        <div key={index} className="flex items-center gap-2 mb-1">
-                                                            <input
-                                                                type="checkbox"
-                                                                className="w-4 h-4 rounded border-[#0D062D]"
-                                                                checked={typeof subtask === 'object' ? subtask.status === 3 : false}
-                                                                onChange={e => {
-                                                                    const newStatus = e.target.checked ? 3 : 2;
-                                                                    handleUpdateSubtaskStatus(
-                                                                        task,
-                                                                        index,
-                                                                        newStatus
-                                                                    );
-                                                                }}
-                                                            />
-                                                            <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
-                                                                {typeof subtask === 'object' ? subtask.title : subtask}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            <div className="flex justify-between items-center mt-2">
-                                                {task.deadline && (
-                                                    <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] w-[80px] h-[23px] flex items-center justify-center">
-                                                        {new Date(task.deadline).toLocaleString('ru-RU', {
-                                                            day: '2-digit',
-                                                            month: '2-digit',
-                                                            hour: '2-digit',
-                                                            minute: '2-digit',
-                                                            hour12: false
-                                                        }).replace(',', '')}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </Link>
-                                    ))}
-                                    {tasks.filter(task => String(task.executor) === String(viewedProfileId) && task.status === 1).length === 0 && (
-                                        <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Колонка "Завершено" */}
-                            <div className="bg-[#F4F4F4] p-[10px] rounded-lg flex flex-col h-full overflow-hidden">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <div className="bg-[#40D033] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
-                                    <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">Завершено</h3>
-                                </div>
-                                <div className="overflow-y-auto flex-1 pr-2">
-                                    {tasks
-                                        .filter(task => String(task.executor) === String(viewedProfileId) && task.status === 3)
-                                        .map(task => (
-                                        <Link
-                                            key={task.id}
-                                            to={`/event?id=${task.event}`}
-                                            className="flex flex-col bg-white p-3 rounded-xl mb-3 hover:bg-[#F8F8F8] transition-colors"
-                                        >
-                                            <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] mb-2">
-                                                {task.title || 'Без названия'}
-                                            </h3>
-                                            {task.subtasks && task.subtasks.length > 0 && (
-                                                <div className="mb-2">
-                                                    {task.subtasks.map((subtask, index) => (
-                                                        <div key={index} className="flex items-center gap-2 mb-1">
-                                                            <input
-                                                                type="checkbox"
-                                                                className="w-4 h-4 rounded border-[#0D062D]"
-                                                                checked={typeof subtask === 'object' ? subtask.status === 3 : false}
-                                                                onChange={e => {
-                                                                    const newStatus = e.target.checked ? 3 : 2;
-                                                                    handleUpdateSubtaskStatus(
-                                                                        task,
-                                                                        index,
-                                                                        newStatus
-                                                                    );
-                                                                }}
-                                                            />
-                                                            <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
-                                                                {typeof subtask === 'object' ? subtask.title : subtask}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            <div className="flex justify-between items-center mt-2">
-                                                {task.deadline && (
-                                                    <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] w-[80px] h-[23px] flex items-center justify-center">
-                                                        {new Date(task.deadline).toLocaleString('ru-RU', {
-                                                            day: '2-digit',
-                                                            month: '2-digit',
-                                                            hour: '2-digit',
-                                                            minute: '2-digit',
-                                                            hour12: false
-                                                        }).replace(',', '')}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </Link>
-                                    ))}
-                                    {tasks.filter(task => String(task.executor) === String(viewedProfileId) && task.status === 3).length === 0 && (
-                                        <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
-                                    )}
-                                </div>
+                                    </div>
+                                ))}
+                                {tasks.filter(task => task.status === 2 && String(task.executor) === String(viewedProfileId)).length === 0 && (
+                                    <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
+                                )}
                             </div>
                         </div>
-                    )}
-                </div>
+
+                        {/* Колонка "В работе" */}
+                        <div className="bg-[#F4F4F4] p-[10px] rounded-lg flex flex-col h-full overflow-hidden">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="bg-[#FFDF56] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
+                                <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">В работе</h3>
+                            </div>
+                            <div className="overflow-y-auto flex-1 pr-2">
+                                {tasks
+                                    .filter(task => task.status === 1 && String(task.executor) === String(viewedProfileId))
+                                    .map(task => (
+                                        <div
+                                            key={task.id}
+                                            className="flex flex-col bg-white p-3 rounded-xl mb-3"
+                                        >
+                                            <Link to={`/event?id=${task.event}`} className="block mb-2">
+                                                <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] hover:underline">
+                                            {task.title || 'Без названия'}
+                                        </h3>
+                                            </Link>
+                                            <div className="cursor-pointer" onClick={() => handleEditTask(task)}>
+                                                <span className="text-[#0D062D] text-opacity-50 text-sm transition-all duration-200 hover:text-green-600 hover:underline cursor-pointer">Редактировать</span>
+                                            </div>
+                                        {task.subtasks && task.subtasks.length > 0 && (
+                                            <div className="mb-2">
+                                                {task.subtasks.map((subtask, index) => (
+                                                    <div key={index} className="flex items-center gap-2 mb-1">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="w-4 h-4 rounded border-[#0D062D]"
+                                                            checked={typeof subtask === 'object' ? subtask.status === 3 : false}
+                                                                onChange={async (e) => {
+                                                                    try {
+                                                                        const newStatus = e.target.checked ? 3 : 2;
+                                                                        // Сначала обновляем локальное состояние для мгновенного отклика
+                                                                        const updatedTasks = tasks.map(t => {
+                                                                            if (t.id === task.id) {
+                                                                                const updatedSubtasks = t.subtasks.map((s, i) => {
+                                                                                    if (i === index) {
+                                                                                        return {
+                                                                                            ...s,
+                                                                                            status: newStatus
+                                                                                        };
+                                                                                    }
+                                                                                    return s;
+                                                                                });
+                                                                                return { ...t, subtasks: updatedSubtasks };
+                                                                            }
+                                                                            return t;
+                                                                        });
+                                                                        setTasks(updatedTasks);
+                                                                        
+                                                                        // Затем отправляем изменения на сервер
+                                                                        await updateSubtaskStatus(task.id, index, newStatus);
+                                                                    } catch (error) {
+                                                                        console.error('Ошибка при обновлении статуса:', error);
+                                                                        // В случае ошибки возвращаем предыдущее состояние
+                                                                        const revertedTasks = tasks.map(t => {
+                                                                            if (t.id === task.id) {
+                                                                                const revertedSubtasks = t.subtasks.map((s, i) => {
+                                                                                    if (i === index) {
+                                                                                        return {
+                                                                                            ...s,
+                                                                                            status: e.target.checked ? 2 : 3
+                                                                                        };
+                                                                                    }
+                                                                                    return s;
+                                                                                });
+                                                                                return { ...t, subtasks: revertedSubtasks };
+                                                                            }
+                                                                            return t;
+                                                                        });
+                                                                        setTasks(revertedTasks);
+                                                                    }
+                                                                }}
+                                                        />
+                                                        <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
+                                                            {typeof subtask === 'object' ? subtask.title : subtask}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center mt-2">
+                                            {task.deadline && (
+                                                <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] w-[80px] h-[23px] flex items-center justify-center">
+                                                    {new Date(task.deadline).toLocaleString('ru-RU', {
+                                                        day: '2-digit',
+                                                        month: '2-digit',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                        hour12: false
+                                                    }).replace(',', '')}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                                {tasks.filter(task => task.status === 1 && String(task.executor) === String(viewedProfileId)).length === 0 && (
+                                    <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Колонка "Завершено" */}
+                        <div className="bg-[#F4F4F4] p-[10px] rounded-lg flex flex-col h-full overflow-hidden">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="bg-[#40D033] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
+                                <h3 className="font-gilroy_semibold text-[#0D062D] text-[27px]">Завершено</h3>
+                            </div>
+                            <div className="overflow-y-auto flex-1 pr-2">
+                                {tasks
+                                    .filter(task => task.status === 3 && String(task.executor) === String(viewedProfileId))
+                                    .map(task => (
+                                        <div
+                                            key={task.id}
+                                            className="flex flex-col bg-white p-3 rounded-xl mb-3"
+                                        >
+                                            <Link to={`/event?id=${task.event}`} className="block mb-2">
+                                                <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] hover:underline">
+                                            {task.title || 'Без названия'}
+                                        </h3>
+                                            </Link>
+                                            <div className="cursor-pointer" onClick={() => handleEditTask(task)}>
+                                                <span className="text-[#0D062D] text-opacity-50 text-sm transition-all duration-200 hover:text-green-600 hover:underline cursor-pointer">Редактировать</span>
+                                            </div>
+                                        {task.subtasks && task.subtasks.length > 0 && (
+                                            <div className="mb-2">
+                                                {task.subtasks.map((subtask, index) => (
+                                                    <div key={index} className="flex items-center gap-2 mb-1">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="w-4 h-4 rounded border-[#0D062D]"
+                                                            checked={typeof subtask === 'object' ? subtask.status === 3 : false}
+                                                                onChange={async (e) => {
+                                                                    try {
+                                                                        const newStatus = e.target.checked ? 3 : 2;
+                                                                        // Сначала обновляем локальное состояние для мгновенного отклика
+                                                                        const updatedTasks = tasks.map(t => {
+                                                                            if (t.id === task.id) {
+                                                                                const updatedSubtasks = t.subtasks.map((s, i) => {
+                                                                                    if (i === index) {
+                                                                                        return {
+                                                                                            ...s,
+                                                                                            status: newStatus
+                                                                                        };
+                                                                                    }
+                                                                                    return s;
+                                                                                });
+                                                                                return { ...t, subtasks: updatedSubtasks };
+                                                                            }
+                                                                            return t;
+                                                                        });
+                                                                        setTasks(updatedTasks);
+                                                                        
+                                                                        // Затем отправляем изменения на сервер
+                                                                        await updateSubtaskStatus(task.id, index, newStatus);
+                                                                    } catch (error) {
+                                                                        console.error('Ошибка при обновлении статуса:', error);
+                                                                        // В случае ошибки возвращаем предыдущее состояние
+                                                                        const revertedTasks = tasks.map(t => {
+                                                                            if (t.id === task.id) {
+                                                                                const revertedSubtasks = t.subtasks.map((s, i) => {
+                                                                                    if (i === index) {
+                                                                                        return {
+                                                                                            ...s,
+                                                                                            status: e.target.checked ? 2 : 3
+                                                                                        };
+                                                                                    }
+                                                                                    return s;
+                                                                                });
+                                                                                return { ...t, subtasks: revertedSubtasks };
+                                                                            }
+                                                                            return t;
+                                                                        });
+                                                                        setTasks(revertedTasks);
+                                                                    }
+                                                                }}
+                                                        />
+                                                        <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
+                                                            {typeof subtask === 'object' ? subtask.title : subtask}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center mt-2">
+                                            {task.deadline && (
+                                                <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] w-[80px] h-[23px] flex items-center justify-center">
+                                                    {new Date(task.deadline).toLocaleString('ru-RU', {
+                                                        day: '2-digit',
+                                                        month: '2-digit',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                        hour12: false
+                                                    }).replace(',', '')}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                                {tasks.filter(task => task.status === 3 && String(task.executor) === String(viewedProfileId)).length === 0 && (
+                                    <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
             )}
+
+            {/* Модальное окно редактирования задачи */}
+            <Modal
+                isOpen={editTaskModalIsOpen}
+                onRequestClose={() => setEditTaskModalIsOpen(false)}
+                style={{
+                    overlay: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)'
+                    },
+                    content: {
+                        top: '50%',
+                        left: '50%',
+                        right: 'auto',
+                        bottom: 'auto',
+                        marginRight: '-50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '500px',
+                        padding: '20px',
+                        borderRadius: '15px'
+                    }
+                }}
+            >
+                <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                        <input
+                            type="text"
+                            placeholder="Название"
+                            className="bg-[#F1F4F9] rounded-lg p-2"
+                            value={newTask.title}
+                            onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                        />
+                    </div>
+
+                    <div className="flex gap-4">
+                        <div className="flex flex-col flex-1">
+                            <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Дедлайн</label>
+                            <input
+                                type="date"
+                                className="bg-[#F1F4F9] rounded-lg p-2 w-[112px] h-[34px]"
+                                value={newTask.deadline || ''}
+                                onChange={(e) => setNewTask({...newTask, deadline: e.target.value})}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-2 flex-1">
+                            <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Статус</label>
+                            <select
+                                className="bg-[#F1F4F9] rounded-lg p-2"
+                                value={newTask.status}
+                                onChange={(e) => setNewTask({...newTask, status: parseInt(e.target.value)})}
+                            >
+                                <option value={2}>Не начато</option>
+                                <option value={1}>В процессе</option>
+                                <option value={3}>Завершено</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <select
+                            className="bg-[#F1F4F9] rounded-lg p-2"
+                            value={newTask.assignee}
+                            onChange={(e) => setNewTask({...newTask, assignee: e.target.value})}
+                        >
+                            <option value="">Выберите ответственного</option>
+                            {Object.values(users).map((user) => (
+                                <option key={`assignee-${user.id}`} value={user.id.toString()}>
+                                    {user.full_name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="flex justify-center gap-4 mt-4">
+                        <button
+                            className="bg-[#F1F4F9] text-[#0D062D] px-6 py-2 rounded-xl"
+                            onClick={() => setEditTaskModalIsOpen(false)}
+                        >
+                            Отмена
+                        </button>
+                        <button
+                            className='bg-[#00D166] text-white p-[7px] rounded-lg'
+                            onClick={handleUpdateTask}
+                        >
+                            Сохранить изменения
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };
