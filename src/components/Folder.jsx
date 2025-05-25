@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axios from "axios";
 import Modal from 'react-modal';
 import { BASE_URL } from "./Globals";
+import MinusIcon from '../photos/minus.svg';
+import FileIcon from '../photos/file.svg';
 
 // Установка appElement для react-modal (добавьте в начале файла)
 Modal.setAppElement('#root');
@@ -41,6 +43,7 @@ const Folder = () => {
     const [message, setMessage] = useState({ text: '', type: '' });
     const [loading, setLoading] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (!localStorage.getItem('access_token')) {
@@ -159,6 +162,14 @@ const Folder = () => {
 
             <div className="bg-[#FFFFFF] rounded-3xl p-6 min-h-[calc(100vh-48px)]">
                 <div className="flex items-center mb-[24px]">
+                    <button 
+                        onClick={() => navigate(`/event?id=${eventId}`)}
+                        className="mr-4 text-[#0D062D] hover:text-[#0077EB] transition-colors"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                    </button>
                     <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
                     <h1 className={`${textStyleSemibold} text-[40px] leading-[48px] mr-auto`}>Мероприятия</h1>
                 </div>
@@ -177,42 +188,52 @@ const Folder = () => {
                             {project.files?.length > 0 ? (
                                 project.files.map((file) => (
                                     <div key={file.id} className="flex items-center mb-1">
-                                    <a 
-                                        href={file.file_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                            className="bg-[#1F4466] w-[200px] h-fit rounded-xl px-[12px] py-[8px] text-white font-gilroy_semibold text-[20px] leading-[25px] text-center mr-2"
-                                    >
-                                        {file.file_name}
-                                    </a>
                                         <button
-                                            className="text-red-500 hover:text-red-700 text-xl ml-2"
+                                            className="mr-2"
                                             onClick={async () => {
                                                 if (window.confirm('Удалить файл?')) {
                                                     try {
                                                         setLoading(true);
-                                                        await axios.delete(`${BASE_URL}/api/project_file/${file.id}/`, {
+                                                        await axios.delete(`${BASE_URL}/projects/api/project_file/${file.id}/`, {
                                                             headers: {
                                                                 'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                                                             }
                                                         });
-                                                        // Обновить список файлов
+                                                    } catch (error) {
+                                                        if (error.response && error.response.status === 404) {
+                                                            setMessage({
+                                                                text: 'Файл уже был удалён или не найден. Список обновлён.',
+                                                                type: 'error'
+                                                            });
+                                                        } else {
+                                                            alert('Ошибка при удалении файла');
+                                                        }
+                                                    } finally {
+                                                        // В любом случае обновляем список файлов
                                                         const updatedProject = await axios.get(`${BASE_URL}/projects/${projId}/`, {
                                                             headers: {
                                                                 'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                                                             }
                                                         });
                                                         setProject(updatedProject.data);
-                                                    } catch (error) {
-                                                        alert('Ошибка при удалении файла');
-                                                    } finally {
                                                         setLoading(false);
                                                     }
                                                 }
                                             }}
                                         >
-                                            ×
+                                            <img src={MinusIcon} alt="Удалить" className="w-5 h-5" />
                                         </button>
+                                        <div className="flex items-center bg-[#F4F4F4] hover:bg-[#E0E0E0] rounded-xl px-[12px] py-[8px] transition-colors">
+                                            <img src={FileIcon} alt="Файл" className="w-5 h-5 mr-[10px]" />
+                                            <a 
+                                                href={file.file_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="font-gilroy_semibold text-[#0D062D] text-[20px] leading-[25px] text-center"
+                                            >
+                                                {file.file_name}
+                                            </a>
+                                        </div>
                                     </div>
                                 ))
                             ) : (

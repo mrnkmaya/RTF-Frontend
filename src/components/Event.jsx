@@ -6,6 +6,9 @@ import { format, parse } from 'date-fns';
 import Modal from 'react-modal';
 import { BASE_URL } from "./Globals";
 import GroupIcon from '../photos/Group.svg';
+import MinusIcon from '../photos/minus.svg';
+import FolderIcon from '../photos/folder.svg';
+import FileIcon from '../photos/file.svg';
 
 const buttonStyle = 'bg-[#0077EB] w-[160px] h-[40px] rounded-xl font-gilroy_semibold text-white text-xl p-2';
 const textStyleSemibold = 'font-gilroy_semibold text-[#0D062D]';
@@ -85,6 +88,7 @@ const Event = () => {
         title: '',
         description: '',
         deadline: '',
+        deadlineTime: '',
         status: 2,
         assignee: '',
         subtasks: []
@@ -440,7 +444,10 @@ const Event = () => {
         if (subtaskInput.trim()) {
             setNewTask({
                 ...newTask,
-                subtasks: [...newTask.subtasks, subtaskInput.trim()]
+                subtasks: [...newTask.subtasks, {
+                    title: subtaskInput.trim(),
+                    status: 2
+                }]
             });
             setSubtaskInput('');
         }
@@ -461,18 +468,25 @@ const Event = () => {
         }
         console.log('Начало создания задачи:', newTask);
         
+        // Оптимизируем структуру данных для уменьшения размера JSON
+        const deadlineString = newTask.deadline ? (newTask.deadline + (newTask.deadlineTime ? 'T' + newTask.deadlineTime : '')) : null;
+        const taskObject = {
+            t: newTask.title.trim(),
+            d: newTask.description?.trim() || '',
+            dl: deadlineString,
+            s: newTask.status || 2,
+            e: newTask.assignee || null,
+            ev: parseInt(eventData.id),
+            st: newTask.subtasks.map(subtask => ({
+                t: (subtask.title || '').trim(),
+                s: subtask.status || 2
+            }))
+        };
+
+        const taskJson = JSON.stringify(taskObject);
+        
         const taskData = {
-            task: JSON.stringify({
-                title: newTask.title,
-                description: newTask.description || "",
-                deadline: newTask.deadline || null,
-                status: newTask.status || 2,
-                executor: newTask.assignee || null,
-                event: parseInt(eventData.id),
-                subtasks: newTask.subtasks.map(subtask => 
-                    typeof subtask === 'string' ? subtask : subtask.title
-                )
-            }),
+            task: taskJson,
             event: eventData.id,
             executor: newTask.assignee || null
         };
@@ -488,21 +502,28 @@ const Event = () => {
         .then(response => {
             console.log('Успешный ответ от сервера:', response.data);
             
+            // Преобразуем обратно в полные имена полей для отображения
+            const taskDetails = JSON.parse(response.data.task);
+            const fullTaskDetails = {
+                title: taskDetails.t || taskDetails.title || '',
+                description: taskDetails.d || taskDetails.description || '',
+                deadline: taskDetails.dl || taskDetails.deadline || null,
+                status: taskDetails.s || taskDetails.status || 2,
+                executor: taskDetails.e || taskDetails.executor || null,
+                event: taskDetails.ev || taskDetails.event || parseInt(eventData.id),
+                subtasks: (taskDetails.st || taskDetails.subtasks || []).map(st => ({
+                    title: st.t || st.title || '',
+                    status: st.s || st.status || 2
+                }))
+            };
+            
             // Обновляем список задач в событии
             const updatedEvent = {
                 ...event,
                 tasks: [...(event.tasks || []), {
                     id: response.data.id,
-                    title: newTask.title,
-                    description: newTask.description || "",
-                    deadline: newTask.deadline || null,
-                    status: newTask.status || 2,
-                    user: newTask.assignee || null,
-                    executor: newTask.assignee || null,
-                    subtasks: newTask.subtasks.map(subtask => 
-                        typeof subtask === 'string' ? subtask : subtask.title
-                    ),
-                    task: taskData.task
+                    ...fullTaskDetails,
+                    task: response.data.task
                 }]
             };
             
@@ -514,6 +535,7 @@ const Event = () => {
                 title: '',
                 description: '',
                 deadline: '',
+                deadlineTime: '',
                 status: 2,
                 assignee: '',
                 subtasks: []
@@ -531,36 +553,50 @@ const Event = () => {
 
     const handleEditTask = (task) => {
         if (!task) return;
-        
         try {
-            const taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
-            let executorId = task.executor || taskDetails.executor || taskDetails.user || '';
-            // Если executorId есть, приводим к строке, иначе оставляем пустую строку
-            executorId = executorId ? String(executorId) : '';
-            // Проверяем, есть ли такой пользователь в списке users
-            if (executorId && !users[executorId]) {
-                executorId = '';
+            let taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
+            if (taskDetails.t !== undefined) {
+                taskDetails = {
+                    title: taskDetails.t || '',
+                    description: taskDetails.d || '',
+                    deadline: taskDetails.dl || '',
+                    status: taskDetails.s || 2,
+                    executor: taskDetails.e || '',
+                    event: taskDetails.ev || '',
+                    subtasks: (taskDetails.st || []).map(st => ({
+                        title: st.t || '',
+                        status: st.s || 2
+                    }))
+                };
             }
+            // Разбиваем дедлайн на дату и время
+            let deadline = '';
+            let deadlineTime = '';
+            if (taskDetails.deadline && taskDetails.deadline.includes('T')) {
+                [deadline, deadlineTime] = taskDetails.deadline.split('T');
+            } else {
+                deadline = taskDetails.deadline || '';
+                deadlineTime = '';
+            }
+            const executorId = task.executor || taskDetails.executor || taskDetails.user || '';
             setSelectedTask(task);
             setNewTask({
                 title: taskDetails?.title || '',
                 description: taskDetails?.description || '',
-                deadline: taskDetails?.deadline || '',
+                deadline,
+                deadlineTime,
                 status: taskDetails?.status || 2,
-                assignee: executorId,
-                subtasks: taskDetails?.subtasks?.map(st => ({
-                    title: typeof st === 'string' ? st : st.title,
-                    status: typeof st === 'string' ? 2 : (st.status || 2)
-                })) || []
+                assignee: executorId.toString(),
+                subtasks: taskDetails?.subtasks || []
             });
             setEditTaskModalIsOpen(true);
         } catch (error) {
-            console.error('Ошибка при обработке задачи для редактирования:', error);
             setSelectedTask(task);
             setNewTask({
                 title: '',
                 description: '',
                 deadline: '',
+                deadlineTime: '',
                 status: 2,
                 assignee: '',
                 subtasks: []
@@ -575,34 +611,30 @@ const Event = () => {
         try {
             const taskDetails = typeof selectedTask.task === 'string' ? JSON.parse(selectedTask.task) : selectedTask;
             
-            const updatedTaskData = {
-                title: newTask.title,
-                description: newTask.description || '',
-                deadline: newTask.deadline || null,
-                status: newTask.status || 2,
-                executor: newTask.assignee || null,
-                event: parseInt(eventData.id),
-                subtasks: newTask.subtasks.map(subtask => {
-                    if (typeof subtask === 'string') {
-                        return {
-                            title: subtask,
-                            status: 2
-                        };
-                    }
-                    return {
-                        title: subtask.title || '',
-                        status: subtask.status || 2
-                    };
-                })
+            // Оптимизируем структуру данных для уменьшения размера JSON
+            const deadlineString = newTask.deadline ? (newTask.deadline + (newTask.deadlineTime ? 'T' + newTask.deadlineTime : '')) : null;
+            const taskObject = {
+                t: newTask.title.trim(),
+                d: newTask.description?.trim() || '',
+                dl: deadlineString,
+                s: newTask.status || 2,
+                e: newTask.assignee || null,
+                ev: parseInt(eventData.id),
+                st: newTask.subtasks.map(subtask => ({
+                    t: (subtask.title || '').trim(),
+                    s: subtask.status || 2
+                }))
             };
 
+            const taskJson = JSON.stringify(taskObject);
+            
             const taskData = {
-                task: JSON.stringify(updatedTaskData),
+                task: taskJson,
                 event: parseInt(eventData.id),
                 executor: newTask.assignee || null
             };
 
-            console.log('Отправляемые данные:', taskData); // Добавим для отладки
+            console.log('Отправляемые данные:', taskData);
 
             axios.put(`${BASE_URL}/api/tasks/${selectedTask.id}/`, taskData, {
                 headers: {
@@ -611,16 +643,26 @@ const Event = () => {
                 }
             })
             .then(response => {
+                console.log('Ответ сервера:', response.data);
+                
+                // Преобразуем обратно в полные имена полей для отображения
                 const updatedTaskDetails = JSON.parse(response.data.task);
+                const fullTaskDetails = {
+                    title: updatedTaskDetails.t || updatedTaskDetails.title || '',
+                    description: updatedTaskDetails.d || updatedTaskDetails.description || '',
+                    deadline: updatedTaskDetails.dl || updatedTaskDetails.deadline || null,
+                    status: updatedTaskDetails.s || updatedTaskDetails.status || 2,
+                    executor: updatedTaskDetails.e || updatedTaskDetails.executor || null,
+                    event: updatedTaskDetails.ev || updatedTaskDetails.event || parseInt(eventData.id),
+                    subtasks: (updatedTaskDetails.st || updatedTaskDetails.subtasks || []).map(st => ({
+                        title: st.t || st.title || '',
+                        status: st.s || st.status || 2
+                    }))
+                };
+
                 const updatedTask = {
                     id: response.data.id,
-                    title: updatedTaskDetails.title,
-                    description: updatedTaskDetails.description,
-                    deadline: updatedTaskDetails.deadline,
-                    status: updatedTaskDetails.status,
-                    user: updatedTaskDetails.user,
-                    executor: updatedTaskDetails.executor || updatedTaskDetails.user,
-                    subtasks: updatedTaskDetails.subtasks || [],
+                    ...fullTaskDetails,
                     task: response.data.task
                 };
 
@@ -634,7 +676,8 @@ const Event = () => {
             })
             .catch(error => {
                 console.error('Ошибка при обновлении задачи:', error);
-                alert('Не удалось обновить задачу. Пожалуйста, попробуйте снова.');
+                console.error('Детали ошибки:', error.response?.data);
+                alert('Не удалось обновить задачу. Пожалуйста, проверьте данные и попробуйте снова.');
             });
         } catch (error) {
             console.error('Ошибка при обработке задачи:', error);
@@ -659,15 +702,24 @@ const Event = () => {
                 };
             }
 
-            const updatedTaskDetails = {
-                ...taskDetails,
-                subtasks: updatedSubtasks
+            // Формируем сокращённый объект задачи
+            const taskObject = {
+                t: taskDetails.title || taskDetails.t || '',
+                d: taskDetails.description || taskDetails.d || '',
+                dl: taskDetails.deadline || taskDetails.dl || null,
+                s: taskDetails.status || taskDetails.s || 2,
+                e: taskDetails.executor || taskDetails.e || null,
+                ev: taskDetails.event || taskDetails.ev || null,
+                st: updatedSubtasks.map(st => ({
+                    t: st.title || st.t || '',
+                    s: st.status || st.s || 2
+                }))
             };
 
             const taskData = {
-                task: JSON.stringify(updatedTaskDetails),
-                event: eventData.id.toString(),
-                user: taskDetails.user
+                task: JSON.stringify(taskObject),
+                event: taskDetails.event || taskDetails.ev || '',
+                executor: taskDetails.executor || taskDetails.e || null
             };
 
             axios.put(`${BASE_URL}/api/tasks/${task.id}/`, taskData, {
@@ -678,15 +730,22 @@ const Event = () => {
             })
             .then(response => {
                 const updatedTaskDetails = JSON.parse(response.data.task);
+                const fullTaskDetails = {
+                    title: updatedTaskDetails.t || updatedTaskDetails.title || '',
+                    description: updatedTaskDetails.d || updatedTaskDetails.description || '',
+                    deadline: updatedTaskDetails.dl || updatedTaskDetails.deadline || null,
+                    status: updatedTaskDetails.s || updatedTaskDetails.status || 2,
+                    executor: updatedTaskDetails.e || updatedTaskDetails.executor || null,
+                    event: updatedTaskDetails.ev || updatedTaskDetails.event || null,
+                    subtasks: (updatedTaskDetails.st || updatedTaskDetails.subtasks || []).map(st => ({
+                        title: st.t || st.title || '',
+                        status: st.s || st.status || 2
+                    }))
+                };
+
                 const updatedTask = {
                     id: response.data.id,
-                    title: updatedTaskDetails.title,
-                    description: updatedTaskDetails.description,
-                    deadline: updatedTaskDetails.deadline,
-                    status: updatedTaskDetails.status,
-                    user: updatedTaskDetails.user,
-                    executor: updatedTaskDetails.executor || updatedTaskDetails.user,
-                    subtasks: updatedTaskDetails.subtasks || [],
+                    ...fullTaskDetails,
                     task: response.data.task
                 };
 
@@ -864,25 +923,27 @@ const Event = () => {
                                         const project = projects[projectId];
                                         if (!project) return null;
                                         return (
-                                            <Link
-                                                key={project.id}
-                                                to={`/folder?project_id=${project.id}&event_id=${event.id}`}
-                                                className="flex items-center justify-between bg-white rounded-lg p-3 hover:bg-gray-50 transition-colors"
-                                            >
-                                                <span className="font-gilroy_semibold text-[#0D062D] text-sm">
-                                                    {project.title}
-                                                </span>
+                                            <div className="flex items-center mb-2">
                                                 <button
                                                     onClick={(e) => {
                                                         e.preventDefault();
                                                         e.stopPropagation();
                                                         handleDeleteProject(project.id);
                                                     }}
-                                                    className="text-red-500 hover:text-red-700 ml-2"
+                                                    className="mr-2"
                                                 >
-                                                    ×
+                                                    <img src={MinusIcon} alt="Удалить" className="w-5 h-5" />
                                                 </button>
-                                            </Link>
+                                                <div className="flex items-center bg-[#F4F4F4] hover:bg-[#E0E0E0] rounded-lg p-3 transition-colors">
+                                                    <img src={FolderIcon} alt="Папка" className="w-5 h-5 mr-[10px]" />
+                                                    <Link
+                                                        to={`/folder?project_id=${project.id}&event_id=${event.id}`}
+                                                        className="font-gilroy_semibold text-[#0D062D] text-sm"
+                                                    >
+                                                        {project.title}
+                                                    </Link>
+                                                </div>
+                                            </div>
                                         );
                                     })}
                                 </div>
@@ -904,6 +965,7 @@ const Event = () => {
                                         title: '',
                                         description: '',
                                         deadline: '',
+                                        deadlineTime: '',
                                         status: 2,
                                         assignee: '',
                                         subtasks: []
@@ -919,6 +981,21 @@ const Event = () => {
                                 let taskDetails;
                                 try {
                                     taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
+                                    // Проверяем наличие сокращенных имен полей
+                                    if (taskDetails.t !== undefined) {
+                                        taskDetails = {
+                                            title: taskDetails.t || '',
+                                            description: taskDetails.d || '',
+                                            deadline: taskDetails.dl || null,
+                                            status: taskDetails.s || 2,
+                                            executor: taskDetails.e || null,
+                                            event: taskDetails.ev || null,
+                                            subtasks: (taskDetails.st || []).map(st => ({
+                                                title: st.t || '',
+                                                status: st.s || 2
+                                            }))
+                                        };
+                                    }
                                 } catch (error) {
                                     console.error('Ошибка при парсинге задачи:', error);
                                     taskDetails = task;
@@ -946,42 +1023,40 @@ const Event = () => {
                                                 <h3 
                                                     className={`${textStyleSemibold} text-[20px] mb-2 group-hover:underline cursor-pointer`}
                                                 >
-                                                    {taskDetails?.title || 'Без названия'}
+                                                    {taskDetails?.title || taskDetails?.t || 'Без названия'}
                                                 </h3>
                                             </div>
                                             {taskDetails?.subtasks && Array.isArray(taskDetails.subtasks) && taskDetails.subtasks.length > 0 && (
                                                 <div className="mb-2">
                                                     <ul className="list-disc list-inside mt-1">
-                                                        {taskDetails.subtasks.slice(0, 5).map((subtask, subIndex) => {
+                                                        {taskDetails.subtasks.slice(0, 3).map((subtask, subIndex) => {
                                                             const subtaskTitle = typeof subtask === 'string' ? subtask : (subtask?.title || '');
                                                             const subtaskStatus = typeof subtask === 'string' ? 2 : (subtask?.status || 2);
                                                             return (
                                                                 <li key={`subtask-${task.id}-${subIndex}`} className="flex items-center gap-2 mb-1">
-                                                                    <div onClick={(e) => e.stopPropagation()}>
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            className="w-4 h-4 rounded border-[#0D062D]"
-                                                                            checked={subtaskStatus === 3}
-                                                                            onChange={(e) => {
-                                                                                e.stopPropagation();
-                                                                                const newStatus = e.target.checked ? 3 : 2;
-                                                                                handleUpdateSubtaskStatus(
-                                                                                    task,
-                                                                                    taskDetails,
-                                                                                    subIndex,
-                                                                                    newStatus
-                                                                                );
-                                                                            }}
-                                                                        />
-                                                                    </div>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="w-4 h-4 rounded border-[#0D062D]"
+                                                                        checked={subtaskStatus === 3}
+                                                                        onChange={(e) => {
+                                                                            e.stopPropagation();
+                                                                            const newStatus = e.target.checked ? 3 : 2;
+                                                                            handleUpdateSubtaskStatus(
+                                                                                task,
+                                                                                taskDetails,
+                                                                                subIndex,
+                                                                                newStatus
+                                                                            );
+                                                                        }}
+                                                                    />
                                                                     <span className="text-[#0D062D] text-sm">
                                                                         {subtaskTitle}
                                                                     </span>
                                                                 </li>
                                                             );
                                                         })}
-                                                        {taskDetails.subtasks.length > 5 && (
-                                                            <li className="flex items-center justify-center text-[#0D062D] text-opacity-50 text-lg mt-1">...</li>
+                                                        {taskDetails.subtasks.length > 3 && (
+                                                            <li className="flex items-left justify-left text-[#0D062D] text-opacity-50 text-lg">...</li>
                                                         )}
                                                     </ul>
                                                 </div>
@@ -1164,10 +1239,19 @@ const Event = () => {
                                 onChange={(e) => setNewTask({...newTask, deadline: e.target.value})}
                             />
                         </div>
+                        <div className="flex flex-col flex-1">
+                            <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Время</label>
+                            <input
+                                type="time"
+                                className="bg-[#F1F4F9] rounded-lg p-2 w-[112px] h-[34px]"
+                                value={newTask.deadlineTime || ''}
+                                onChange={(e) => setNewTask({...newTask, deadlineTime: e.target.value})}
+                            />
+                        </div>
                         {taskModalIsOpen ? (
                             <input type="hidden" value="2" />
                         ) : (
-                            <div className="flex flex-col gap-2 flex-1">
+                            <div className="flex flex-col flex-1">
                                 <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Статус</label>
                                 <select
                                     className="bg-[#F1F4F9] rounded-lg p-2"
@@ -1278,7 +1362,16 @@ const Event = () => {
                                 onChange={(e) => setNewTask({...newTask, deadline: e.target.value})}
                             />
                         </div>
-                        <div className="flex flex-col gap-2 flex-1">
+                        <div className="flex flex-col flex-1">
+                            <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Время</label>
+                            <input
+                                type="time"
+                                className="bg-[#F1F4F9] rounded-lg p-2 w-[112px] h-[34px]"
+                                value={newTask.deadlineTime || ''}
+                                onChange={(e) => setNewTask({...newTask, deadlineTime: e.target.value})}
+                            />
+                        </div>
+                        <div className="flex flex-col flex-1">
                             <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Статус</label>
                             <select
                                 className="bg-[#F1F4F9] rounded-lg p-2"

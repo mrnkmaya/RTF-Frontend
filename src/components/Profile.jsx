@@ -30,6 +30,7 @@ const Profile = () => {
         title: '',
         description: '',
         deadline: '',
+        deadlineTime: '',
         status: 2,
         assignee: '',
         subtasks: []
@@ -220,8 +221,21 @@ const Profile = () => {
                                 taskDetails = task;
                             }
 
-                            console.log('Детали задачи:', taskDetails);
-                            console.log('Исполнитель:', taskDetails.executor);
+                            // Приводим к единому формату
+                            if (taskDetails.t !== undefined) {
+                                taskDetails = {
+                                    title: taskDetails.t || '',
+                                    description: taskDetails.d || '',
+                                    deadline: taskDetails.dl || '',
+                                    status: taskDetails.s || 2,
+                                    executor: taskDetails.e || '',
+                                    event: taskDetails.ev || '',
+                                    subtasks: (taskDetails.st || []).map(st => ({
+                                        title: st.t || '',
+                                        status: st.s || 2
+                                    }))
+                                };
+                            }
 
                             return {
                                 id: task.id,
@@ -320,38 +334,50 @@ const Profile = () => {
 
     const handleEditTask = (task) => {
         if (!task) return;
-        
         try {
-            // Получаем данные задачи
-            const taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
-            
-            // Получаем ID ответственного из разных возможных мест
+            let taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
+            if (taskDetails.t !== undefined) {
+                taskDetails = {
+                    title: taskDetails.t || '',
+                    description: taskDetails.d || '',
+                    deadline: taskDetails.dl || '',
+                    status: taskDetails.s || 2,
+                    executor: taskDetails.e || '',
+                    event: taskDetails.ev || '',
+                    subtasks: (taskDetails.st || []).map(st => ({
+                        title: st.t || '',
+                        status: st.s || 2
+                    }))
+                };
+            }
+            // Разбиваем дедлайн на дату и время
+            let deadline = '';
+            let deadlineTime = '';
+            if (taskDetails.deadline && taskDetails.deadline.includes('T')) {
+                [deadline, deadlineTime] = taskDetails.deadline.split('T');
+            } else {
+                deadline = taskDetails.deadline || '';
+                deadlineTime = '';
+            }
             const executorId = task.executor || taskDetails.executor || taskDetails.user || '';
-            
-            console.log('Данные задачи:', task);
-            console.log('Детали задачи:', taskDetails);
-            console.log('ID ответственного:', executorId);
-            
             setSelectedTask(task);
             setNewTask({
                 title: taskDetails?.title || '',
                 description: taskDetails?.description || '',
-                deadline: taskDetails?.deadline || '',
+                deadline,
+                deadlineTime,
                 status: taskDetails?.status || 2,
-                assignee: executorId.toString(), // Преобразуем ID в строку
-                subtasks: taskDetails?.subtasks?.map(st => ({
-                    title: typeof st === 'string' ? st : st.title,
-                    status: typeof st === 'string' ? 2 : (st.status || 2)
-                })) || []
+                assignee: executorId.toString(),
+                subtasks: taskDetails?.subtasks || []
             });
             setEditTaskModalIsOpen(true);
         } catch (error) {
-            console.error('Ошибка при обработке задачи для редактирования:', error);
             setSelectedTask(task);
             setNewTask({
                 title: '',
                 description: '',
                 deadline: '',
+                deadlineTime: '',
                 status: 2,
                 assignee: '',
                 subtasks: []
@@ -362,39 +388,26 @@ const Profile = () => {
 
     const handleUpdateTask = () => {
         if (!selectedTask) return;
-        
         try {
-            const taskDetails = typeof selectedTask.task === 'string' ? JSON.parse(selectedTask.task) : selectedTask;
-            
-            const updatedTaskData = {
-                title: newTask.title,
-                description: newTask.description || '',
-                deadline: newTask.deadline || null,
-                status: newTask.status || 2,
-                executor: newTask.assignee || null,
-                event: selectedTask.event,
-                subtasks: newTask.subtasks.map(subtask => {
-                    if (typeof subtask === 'string') {
-                        return {
-                            title: subtask,
-                            status: 2
-                        };
-                    }
-                    return {
-                        title: subtask.title || '',
-                        status: subtask.status || 2
-                    };
-                })
+            const deadlineString = newTask.deadline ? (newTask.deadline + (newTask.deadlineTime ? 'T' + newTask.deadlineTime : '')) : null;
+            const taskObject = {
+                t: newTask.title.trim(),
+                d: newTask.description?.trim() || '',
+                dl: deadlineString,
+                s: newTask.status || 2,
+                e: newTask.assignee || null,
+                ev: selectedTask.event || '',
+                st: newTask.subtasks.map(subtask => ({
+                    t: (subtask.title || '').trim(),
+                    s: subtask.status || 2
+                }))
             };
-
+            const taskJson = JSON.stringify(taskObject);
             const taskData = {
-                task: JSON.stringify(updatedTaskData),
+                task: taskJson,
                 event: selectedTask.event,
                 executor: newTask.assignee || null
             };
-
-            console.log('Отправляемые данные:', taskData);
-
             axios.put(`${BASE_URL}/api/tasks/${selectedTask.id}/`, taskData, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -403,18 +416,23 @@ const Profile = () => {
             })
             .then(response => {
                 const updatedTaskDetails = JSON.parse(response.data.task);
+                const fullTaskDetails = {
+                    title: updatedTaskDetails.t || updatedTaskDetails.title || '',
+                    description: updatedTaskDetails.d || updatedTaskDetails.description || '',
+                    deadline: updatedTaskDetails.dl || updatedTaskDetails.deadline || null,
+                    status: updatedTaskDetails.s || updatedTaskDetails.status || 2,
+                    executor: updatedTaskDetails.e || updatedTaskDetails.executor || null,
+                    event: updatedTaskDetails.ev || updatedTaskDetails.event || null,
+                    subtasks: (updatedTaskDetails.st || updatedTaskDetails.subtasks || []).map(st => ({
+                        title: st.t || st.title || '',
+                        status: st.s || st.status || 2
+                    }))
+                };
                 const updatedTask = {
                     id: response.data.id,
-                    title: updatedTaskDetails.title,
-                    description: updatedTaskDetails.description,
-                    deadline: updatedTaskDetails.deadline,
-                    status: updatedTaskDetails.status,
-                    user: updatedTaskDetails.user,
-                    executor: updatedTaskDetails.executor || updatedTaskDetails.user,
-                    subtasks: updatedTaskDetails.subtasks || [],
+                    ...fullTaskDetails,
                     task: response.data.task
                 };
-
                 setTasks(prevTasks => prevTasks.map(t => 
                     t.id === selectedTask.id ? updatedTask : t
                 ));
@@ -742,14 +760,14 @@ const Profile = () => {
                             <div className="overflow-y-auto flex-1 pr-2">
                                 {tasks
                                     .filter(task => task.status === 2 && String(task.executor) === String(viewedProfileId))
-                                    .map(task => (
+                                    .map((task, index) => (
                                         <div
                                             key={`task-${task.id}-not-started`}
                                             className="flex flex-col bg-white p-3 rounded-xl mb-3"
                                         >
                                             <Link to={`/event?id=${task.event}`} className="block mb-2">
                                                 <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] hover:underline">
-                                            {task.title || 'Без названия'}
+                                            {task.title || task.t || 'Без названия'}
                                         </h3>
                                             </Link>
                                             <div className="cursor-pointer" onClick={() => handleEditTask(task)}>
@@ -757,62 +775,62 @@ const Profile = () => {
                                             </div>
                                         {task.subtasks && task.subtasks.length > 0 && (
                                             <div className="mb-2">
-                                                {task.subtasks.map((subtask, index) => (
-                                                        <div key={index} className="flex items-center gap-2 mb-1">
+                                                {task.subtasks.slice(0, 3).map((subtask, index) => (
+                                                    <div key={index} className="flex items-center gap-2 mb-1">
                                                         <input
                                                             type="checkbox"
                                                             className="w-4 h-4 rounded border-[#0D062D]"
                                                             checked={typeof subtask === 'object' ? subtask.status === 3 : false}
-                                                                onChange={async (e) => {
-                                                                    try {
-                                                                        const newStatus = e.target.checked ? 3 : 2;
-                                                                        // Сначала обновляем локальное состояние для мгновенного отклика
-                                                                        const updatedTasks = tasks.map(t => {
-                                                                            if (t.id === task.id) {
-                                                                                const updatedSubtasks = t.subtasks.map((s, i) => {
-                                                                                    if (i === index) {
-                                                                                        return {
-                                                                                            ...s,
-                                                                                            status: newStatus
-                                                                                        };
-                                                                                    }
-                                                                                    return s;
-                                                                                });
-                                                                                return { ...t, subtasks: updatedSubtasks };
-                                                                            }
-                                                                            return t;
-                                                                        });
-                                                                        setTasks(updatedTasks);
-                                                                        
-                                                                        // Затем отправляем изменения на сервер
-                                                                        await updateSubtaskStatus(task.id, index, newStatus);
-                                                                    } catch (error) {
-                                                                        console.error('Ошибка при обновлении статуса:', error);
-                                                                        // В случае ошибки возвращаем предыдущее состояние
-                                                                        const revertedTasks = tasks.map(t => {
-                                                                            if (t.id === task.id) {
-                                                                                const revertedSubtasks = t.subtasks.map((s, i) => {
-                                                                                    if (i === index) {
-                                                                                        return {
-                                                                                            ...s,
-                                                                                            status: e.target.checked ? 2 : 3
-                                                                                        };
-                                                                                    }
-                                                                                    return s;
-                                                                                });
-                                                                                return { ...t, subtasks: revertedSubtasks };
-                                                                            }
-                                                                            return t;
-                                                                        });
-                                                                        setTasks(revertedTasks);
-                                                                    }
-                                                                }}
+                                                            onChange={async (e) => {
+                                                                try {
+                                                                    const newStatus = e.target.checked ? 3 : 2;
+                                                                    // Формируем сокращённый объект задачи
+                                                                    const taskObject = {
+                                                                        t: task.title || task.t || '',
+                                                                        d: task.description || task.d || '',
+                                                                        dl: (task.deadlineTime ? `${task.deadline}T${task.deadlineTime}` : task.deadline) || task.dl || null,
+                                                                        s: task.status || task.s || 2,
+                                                                        e: task.executor || task.e || null,
+                                                                        ev: task.event || task.ev || null,
+                                                                        st: task.subtasks.map((st, i) => ({
+                                                                            t: (typeof st === 'object' ? st.title : st) || '',
+                                                                            s: i === index ? newStatus : (typeof st === 'object' ? st.status : 2)
+                                                                        }))
+                                                                    };
+                                                                    const taskData = {
+                                                                        task: JSON.stringify(taskObject),
+                                                                        event: task.event || task.ev || '',
+                                                                        executor: task.executor || task.e || null
+                                                                    };
+                                                                    await axios.put(`${BASE_URL}/api/tasks/${task.id}/`, taskData, {
+                                                                        headers: {
+                                                                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                                                                            'Content-Type': 'application/json'
+                                                                        }
+                                                                    });
+                                                                    // Обновляем только локальное состояние
+                                                                    setTasks(prevTasks => prevTasks.map(t => {
+                                                                        if (t.id === task.id) {
+                                                                            const updatedSubtasks = t.subtasks.map((st, i) =>
+                                                                                i === index ? { ...st, status: newStatus } : st
+                                                                            );
+                                                                            return { ...t, subtasks: updatedSubtasks };
+                                                                        }
+                                                                        return t;
+                                                                    }));
+                                                                } catch (error) {
+                                                                    // Можно добавить обработку ошибки
+                                                                }
+                                                            }}
                                                         />
-                                                        <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
+                                                        <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%] mb-1">
                                                             {typeof subtask === 'object' ? subtask.title : subtask}
                                                         </span>
                                                     </div>
                                                 ))}
+                                                {task.subtasks.length > 3 && (
+                                                    <div className="flex items-left justify-left text-[#0D062D] text-opacity-50 text-lg">...</div>
+                                                )}
                                             </div>
                                         )}
                                         <div className="flex justify-between items-center mt-2">
@@ -845,14 +863,14 @@ const Profile = () => {
                             <div className="overflow-y-auto flex-1 pr-2">
                                 {tasks
                                     .filter(task => task.status === 1 && String(task.executor) === String(viewedProfileId))
-                                    .map(task => (
+                                    .map((task, index) => (
                                         <div
                                             key={task.id}
                                             className="flex flex-col bg-white p-3 rounded-xl mb-3"
                                         >
                                             <Link to={`/event?id=${task.event}`} className="block mb-2">
                                                 <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] hover:underline">
-                                            {task.title || 'Без названия'}
+                                            {task.title || task.t || 'Без названия'}
                                         </h3>
                                             </Link>
                                             <div className="cursor-pointer" onClick={() => handleEditTask(task)}>
@@ -860,62 +878,62 @@ const Profile = () => {
                                             </div>
                                         {task.subtasks && task.subtasks.length > 0 && (
                                             <div className="mb-2">
-                                                {task.subtasks.map((subtask, index) => (
+                                                {task.subtasks.slice(0, 3).map((subtask, index) => (
                                                     <div key={index} className="flex items-center gap-2 mb-1">
                                                         <input
                                                             type="checkbox"
                                                             className="w-4 h-4 rounded border-[#0D062D]"
                                                             checked={typeof subtask === 'object' ? subtask.status === 3 : false}
-                                                                onChange={async (e) => {
-                                                                    try {
-                                                                        const newStatus = e.target.checked ? 3 : 2;
-                                                                        // Сначала обновляем локальное состояние для мгновенного отклика
-                                                                        const updatedTasks = tasks.map(t => {
-                                                                            if (t.id === task.id) {
-                                                                                const updatedSubtasks = t.subtasks.map((s, i) => {
-                                                                                    if (i === index) {
-                                                                                        return {
-                                                                                            ...s,
-                                                                                            status: newStatus
-                                                                                        };
-                                                                                    }
-                                                                                    return s;
-                                                                                });
-                                                                                return { ...t, subtasks: updatedSubtasks };
-                                                                            }
-                                                                            return t;
-                                                                        });
-                                                                        setTasks(updatedTasks);
-                                                                        
-                                                                        // Затем отправляем изменения на сервер
-                                                                        await updateSubtaskStatus(task.id, index, newStatus);
-                                                                    } catch (error) {
-                                                                        console.error('Ошибка при обновлении статуса:', error);
-                                                                        // В случае ошибки возвращаем предыдущее состояние
-                                                                        const revertedTasks = tasks.map(t => {
-                                                                            if (t.id === task.id) {
-                                                                                const revertedSubtasks = t.subtasks.map((s, i) => {
-                                                                                    if (i === index) {
-                                                                                        return {
-                                                                                            ...s,
-                                                                                            status: e.target.checked ? 2 : 3
-                                                                                        };
-                                                                                    }
-                                                                                    return s;
-                                                                                });
-                                                                                return { ...t, subtasks: revertedSubtasks };
-                                                                            }
-                                                                            return t;
-                                                                        });
-                                                                        setTasks(revertedTasks);
-                                                                    }
-                                                                }}
+                                                            onChange={async (e) => {
+                                                                try {
+                                                                    const newStatus = e.target.checked ? 3 : 2;
+                                                                    // Формируем сокращённый объект задачи
+                                                                    const taskObject = {
+                                                                        t: task.title || task.t || '',
+                                                                        d: task.description || task.d || '',
+                                                                        dl: (task.deadlineTime ? `${task.deadline}T${task.deadlineTime}` : task.deadline) || task.dl || null,
+                                                                        s: task.status || task.s || 2,
+                                                                        e: task.executor || task.e || null,
+                                                                        ev: task.event || task.ev || null,
+                                                                        st: task.subtasks.map((st, i) => ({
+                                                                            t: (typeof st === 'object' ? st.title : st) || '',
+                                                                            s: i === index ? newStatus : (typeof st === 'object' ? st.status : 2)
+                                                                        }))
+                                                                    };
+                                                                    const taskData = {
+                                                                        task: JSON.stringify(taskObject),
+                                                                        event: task.event || task.ev || '',
+                                                                        executor: task.executor || task.e || null
+                                                                    };
+                                                                    await axios.put(`${BASE_URL}/api/tasks/${task.id}/`, taskData, {
+                                                                        headers: {
+                                                                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                                                                            'Content-Type': 'application/json'
+                                                                        }
+                                                                    });
+                                                                    // Обновляем только локальное состояние
+                                                                    setTasks(prevTasks => prevTasks.map(t => {
+                                                                        if (t.id === task.id) {
+                                                                            const updatedSubtasks = t.subtasks.map((st, i) =>
+                                                                                i === index ? { ...st, status: newStatus } : st
+                                                                            );
+                                                                            return { ...t, subtasks: updatedSubtasks };
+                                                                        }
+                                                                        return t;
+                                                                    }));
+                                                                } catch (error) {
+                                                                    // Можно добавить обработку ошибки
+                                                                }
+                                                            }}
                                                         />
-                                                        <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
+                                                        <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%] mb-1">
                                                             {typeof subtask === 'object' ? subtask.title : subtask}
                                                         </span>
                                                     </div>
                                                 ))}
+                                                {task.subtasks.length > 3 && (
+                                                    <div className="flex items-left justify-left text-[#0D062D] text-opacity-50 text-lg">...</div>
+                                                )}
                                             </div>
                                         )}
                                         <div className="flex justify-between items-center mt-2">
@@ -948,14 +966,14 @@ const Profile = () => {
                             <div className="overflow-y-auto flex-1 pr-2">
                                 {tasks
                                     .filter(task => task.status === 3 && String(task.executor) === String(viewedProfileId))
-                                    .map(task => (
+                                    .map((task, index) => (
                                         <div
                                             key={task.id}
                                             className="flex flex-col bg-white p-3 rounded-xl mb-3"
                                         >
                                             <Link to={`/event?id=${task.event}`} className="block mb-2">
                                                 <h3 className="font-gilroy_semibold text-[#0D062D] text-[14px] leading-[100%] hover:underline">
-                                            {task.title || 'Без названия'}
+                                            {task.title || task.t || 'Без названия'}
                                         </h3>
                                             </Link>
                                             <div className="cursor-pointer" onClick={() => handleEditTask(task)}>
@@ -963,62 +981,62 @@ const Profile = () => {
                                             </div>
                                         {task.subtasks && task.subtasks.length > 0 && (
                                             <div className="mb-2">
-                                                {task.subtasks.map((subtask, index) => (
+                                                {task.subtasks.slice(0, 3).map((subtask, index) => (
                                                     <div key={index} className="flex items-center gap-2 mb-1">
                                                         <input
                                                             type="checkbox"
                                                             className="w-4 h-4 rounded border-[#0D062D]"
                                                             checked={typeof subtask === 'object' ? subtask.status === 3 : false}
-                                                                onChange={async (e) => {
-                                                                    try {
-                                                                        const newStatus = e.target.checked ? 3 : 2;
-                                                                        // Сначала обновляем локальное состояние для мгновенного отклика
-                                                                        const updatedTasks = tasks.map(t => {
-                                                                            if (t.id === task.id) {
-                                                                                const updatedSubtasks = t.subtasks.map((s, i) => {
-                                                                                    if (i === index) {
-                                                                                        return {
-                                                                                            ...s,
-                                                                                            status: newStatus
-                                                                                        };
-                                                                                    }
-                                                                                    return s;
-                                                                                });
-                                                                                return { ...t, subtasks: updatedSubtasks };
-                                                                            }
-                                                                            return t;
-                                                                        });
-                                                                        setTasks(updatedTasks);
-                                                                        
-                                                                        // Затем отправляем изменения на сервер
-                                                                        await updateSubtaskStatus(task.id, index, newStatus);
-                                                                    } catch (error) {
-                                                                        console.error('Ошибка при обновлении статуса:', error);
-                                                                        // В случае ошибки возвращаем предыдущее состояние
-                                                                        const revertedTasks = tasks.map(t => {
-                                                                            if (t.id === task.id) {
-                                                                                const revertedSubtasks = t.subtasks.map((s, i) => {
-                                                                                    if (i === index) {
-                                                                                        return {
-                                                                                            ...s,
-                                                                                            status: e.target.checked ? 2 : 3
-                                                                                        };
-                                                                                    }
-                                                                                    return s;
-                                                                                });
-                                                                                return { ...t, subtasks: revertedSubtasks };
-                                                                            }
-                                                                            return t;
-                                                                        });
-                                                                        setTasks(revertedTasks);
-                                                                    }
-                                                                }}
+                                                            onChange={async (e) => {
+                                                                try {
+                                                                    const newStatus = e.target.checked ? 3 : 2;
+                                                                    // Формируем сокращённый объект задачи
+                                                                    const taskObject = {
+                                                                        t: task.title || task.t || '',
+                                                                        d: task.description || task.d || '',
+                                                                        dl: (task.deadlineTime ? `${task.deadline}T${task.deadlineTime}` : task.deadline) || task.dl || null,
+                                                                        s: task.status || task.s || 2,
+                                                                        e: task.executor || task.e || null,
+                                                                        ev: task.event || task.ev || null,
+                                                                        st: task.subtasks.map((st, i) => ({
+                                                                            t: (typeof st === 'object' ? st.title : st) || '',
+                                                                            s: i === index ? newStatus : (typeof st === 'object' ? st.status : 2)
+                                                                        }))
+                                                                    };
+                                                                    const taskData = {
+                                                                        task: JSON.stringify(taskObject),
+                                                                        event: task.event || task.ev || '',
+                                                                        executor: task.executor || task.e || null
+                                                                    };
+                                                                    await axios.put(`${BASE_URL}/api/tasks/${task.id}/`, taskData, {
+                                                                        headers: {
+                                                                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                                                                            'Content-Type': 'application/json'
+                                                                        }
+                                                                    });
+                                                                    // Обновляем только локальное состояние
+                                                                    setTasks(prevTasks => prevTasks.map(t => {
+                                                                        if (t.id === task.id) {
+                                                                            const updatedSubtasks = t.subtasks.map((st, i) =>
+                                                                                i === index ? { ...st, status: newStatus } : st
+                                                                            );
+                                                                            return { ...t, subtasks: updatedSubtasks };
+                                                                        }
+                                                                        return t;
+                                                                    }));
+                                                                } catch (error) {
+                                                                    // Можно добавить обработку ошибки
+                                                                }
+                                                            }}
                                                         />
-                                                        <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%]">
+                                                        <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%] mb-1">
                                                             {typeof subtask === 'object' ? subtask.title : subtask}
                                                         </span>
                                                     </div>
                                                 ))}
+                                                {task.subtasks.length > 3 && (
+                                                    <div className="flex items-left justify-left text-[#0D062D] text-opacity-50 text-lg">...</div>
+                                                )}
                                             </div>
                                         )}
                                         <div className="flex justify-between items-center mt-2">
@@ -1088,7 +1106,16 @@ const Profile = () => {
                                 onChange={(e) => setNewTask({...newTask, deadline: e.target.value})}
                             />
                         </div>
-                        <div className="flex flex-col gap-2 flex-1">
+                        <div className="flex flex-col flex-1">
+                            <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Время</label>
+                            <input
+                                type="time"
+                                className="bg-[#F1F4F9] rounded-lg p-2 w-[112px] h-[34px]"
+                                value={newTask.deadlineTime || ''}
+                                onChange={(e) => setNewTask({...newTask, deadlineTime: e.target.value})}
+                            />
+                        </div>
+                        <div className="flex flex-col flex-1">
                             <label className="font-gilroy_semibold text-[#0D062D] text-[16px]">Статус</label>
                             <select
                                 className="bg-[#F1F4F9] rounded-lg p-2"
