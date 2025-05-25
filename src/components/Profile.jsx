@@ -35,6 +35,7 @@ const Profile = () => {
         assignees: [],
         subtasks: []
     });
+    const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
     const updateSubtaskStatus = async (taskId, subtaskIndex, newStatus) => {
         try {
@@ -641,15 +642,22 @@ const Profile = () => {
                     <h1 className="font-gilroy_semibold text-[#0D062D] text-[32px] mr-auto leading-[38px]">
                         {isOwnProfile ? 'Мой профиль' : 'Профиль пользователя'}
                     </h1>
-                    
                     {canEdit() && (
-                        <button
-                            className={`${BUTTON_STYLE} ${isLoading ? 'opacity-50' : ''}`}
-                            onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-                            disabled={isLoading}
-                        >
-                            {isLoading ? 'Сохранение...' : isEditing ? 'Сохранить' : 'Редактировать'}
-                        </button>
+                        <>
+                            <button
+                                className={`${BUTTON_STYLE} ${isLoading ? 'opacity-50' : ''}`}
+                                onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+                                disabled={isLoading}
+                            >
+                                {isLoading ? 'Сохранение...' : isEditing ? 'Сохранить' : 'Редактировать'}
+                            </button>
+                            <button
+                                className={`${BUTTON_STYLE} ml-4 bg-[#FF4B4B]`}
+                                onClick={() => setLogoutModalOpen(true)}
+                            >
+                                Выйти
+                            </button>
+                        </>
                     )}
                 </div>
 
@@ -1196,6 +1204,48 @@ const Profile = () => {
                             Сохранить изменения
                         </button>
                     </div>
+                </div>
+            </Modal>
+
+            {/* Модальное окно выхода */}
+            <Modal
+                isOpen={logoutModalOpen}
+                onRequestClose={() => setLogoutModalOpen(false)}
+                style={{
+                    overlay: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)'
+                    },
+                    content: {
+                        top: '50%',
+                        left: '50%',
+                        right: 'auto',
+                        bottom: 'auto',
+                        marginRight: '-50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '350px',
+                        padding: '24px',
+                        borderRadius: '15px',
+                        textAlign: 'center'
+                    }
+                }}
+            >
+                <h2 className="text-xl font-gilroy_bold mb-4">Вы точно хотите выйти?</h2>
+                <div className="flex justify-center gap-4 mt-4">
+                    <button
+                        className="bg-[#F1F4F9] text-[#0D062D] px-6 py-2 rounded-xl"
+                        onClick={() => setLogoutModalOpen(false)}
+                    >
+                        Отмена
+                    </button>
+                    <button
+                        className='bg-[#FF4B4B] text-white p-[7px] rounded-lg'
+                        onClick={() => {
+                            localStorage.clear();
+                            window.location.href = 'http://localhost:3000';
+                        }}
+                    >
+                        Выйти
+                    </button>
                 </div>
             </Modal>
         </div>
