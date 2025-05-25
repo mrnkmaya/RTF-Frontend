@@ -5,6 +5,7 @@ import Modal from 'react-modal';
 import { BASE_URL } from "./Globals";
 import MinusIcon from '../photos/minus.svg';
 import FileIcon from '../photos/file.svg';
+import FolderIcon from '../photos/folder.svg';
 
 // Установка appElement для react-modal (добавьте в начале файла)
 Modal.setAppElement('#root');
@@ -179,17 +180,20 @@ const Folder = () => {
                         <p className="font-gilroy_heavy text-[48px] text-[#0D062D] leading-[61px] mb-[12px]">
                             {event.title || 'Название мероприятия'}
                         </p>
-                        <p className="font-gilroy_heavy text-[32px] text-[#0D062D] leading-[39px] mb-[12px]">
-                            {project.title || 'Название проекта'}
-                        </p>
+                        <div className="flex items-center bg-[#F4F4F4] rounded-xl px-[12px] py-[8px] transition-colors mb-[12px]">
+                            <img src={FolderIcon} alt="Папка" className="w-5 h-5 mr-[10px]" />
+                            <p className="font-gilroy_heavy text-[32px] text-[#0D062D] leading-[39px]">
+                                {project.title || 'Название проекта'}
+                            </p>
+                        </div>
                         
                         <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Файлы</p>
-                        <div className="flex flex-col mb-3">
+                        <div className="flex flex-col mb-3 max-h-[400px] overflow-y-auto pr-2">
                             {project.files?.length > 0 ? (
                                 project.files.map((file) => (
-                                    <div key={file.id} className="flex items-center mb-1">
+                                    <div key={file.id} className="flex items-center mb-2">
                                         <button
-                                            className="mr-2"
+                                            className="mr-2 flex-shrink-0"
                                             onClick={async () => {
                                                 if (window.confirm('Удалить файл?')) {
                                                     try {
@@ -242,11 +246,11 @@ const Folder = () => {
                         </div>
                         
                         <button 
-                            className={`${buttonStyle} w-[200px] h-fit ${loading ? 'opacity-50' : ''}`} 
+                            className={`w-[168px] h-[41px] bg-[#DCF0DD] rounded-[12px] px-[12px] py-[8px] gap-[10px] flex items-center justify-center font-gilroy_semibold text-[#0D062D] text-[16px] leading-[100%] tracking-[0px] ${loading ? 'opacity-50' : ''}`}
                             onClick={() => setFilesModalIsOpen(true)}
                             disabled={loading}
                         >
-                            {loading ? 'Загрузка...' : 'Создать Google файл'}
+                            {loading ? 'Загрузка...' : 'Добавить файл'}
                         </button>
                         
                         <Modal

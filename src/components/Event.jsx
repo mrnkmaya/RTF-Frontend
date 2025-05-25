@@ -30,7 +30,7 @@ const taskModalStyle = {
         right: 'auto',
         bottom: 'auto',
         width: '448px',
-        height: '353px',
+        height: '176px',
         borderRadius: '24px',
         padding: '24px',
         gap: '12px',
@@ -53,7 +53,7 @@ const filesModalStyle = {
         height: '347px',
         borderRadius: '24px',
         border: '2px solid #FFFFFF',
-        padding: '24px 32px',
+        padding: '24px',
     },
 };
 
@@ -924,37 +924,34 @@ const Event = () => {
                             </button>
                         </div>
                         {event.projects && event.projects.length > 0 && (
-                            <div className="mt-4">
-                                
-                                <div className="grid grid-cols-3 gap-4">
-                                    {event.projects.map(projectId => {
-                                        const project = projects[projectId];
-                                        if (!project) return null;
-                                        return (
-                                            <div className="flex items-center mb-2">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        handleDeleteProject(project.id);
-                                                    }}
-                                                    className="mr-2"
+                            <div className="mt-4 max-h-[300px] w-[200px] overflow-y-auto pr-2">
+                                {event.projects.map(projectId => {
+                                    const project = projects[projectId];
+                                    if (!project) return null;
+                                    return (
+                                        <div key={`project-${project.id}`} className="flex items-center mb-2">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleDeleteProject(project.id);
+                                                }}
+                                                className="mr-2 flex-shrink-0"
+                                            >
+                                                <img src={MinusIcon} alt="Удалить" className="w-5 h-5" />
+                                            </button>
+                                            <div className="flex items-center bg-[#F4F4F4] hover:bg-[#E0E0E0] rounded-xl px-[12px] py-[8px] transition-colors w-full">
+                                                <img src={FolderIcon} alt="Папка" className="w-5 h-5 mr-[10px]" />
+                                                <Link 
+                                                    to={`/folder?project_id=${project.id}&event_id=${eventData.id}`}
+                                                    className="font-gilroy_semibold text-[#0D062D] text-[20px] leading-[25px] truncate"
                                                 >
-                                                    <img src={MinusIcon} alt="Удалить" className="w-5 h-5" />
-                                                </button>
-                                                <div className="flex items-center bg-[#F4F4F4] hover:bg-[#E0E0E0] rounded-lg p-3 transition-colors">
-                                                    <img src={FolderIcon} alt="Папка" className="w-5 h-5 mr-[10px]" />
-                                                    <Link
-                                                        to={`/folder?project_id=${project.id}&event_id=${event.id}`}
-                                                        className="font-gilroy_semibold text-[#0D062D] text-sm"
-                                                    >
-                                                        {project.title}
-                                                    </Link>
-                                                </div>
+                                                    {project.title}
+                                                </Link>
                                             </div>
-                                        );
-                                    })}
-                                </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -1146,8 +1143,11 @@ const Event = () => {
                     <div className="mt-6">
                         <p className="font-gilroy_heavy text-[32px] text-[#0D062D] leading-[39px] mb-[12px]">Название папки</p>
                         <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Файлы</p>
-                        <button className={`${buttonStyle} w-[200px] h-fit mt-4`} onClick={() => {setFilesModalIsOpen(true)}}>
-                            Создать Google файл
+                        <button 
+                            className="w-[168px] h-[41px] bg-[#DCF0DD] rounded-[12px] px-[12px] py-[8px] gap-[10px] flex items-center justify-center font-gilroy_semibold text-[#0D062D] text-[16px] leading-[100%] tracking-[0px]"
+                            onClick={() => {setFilesModalIsOpen(true)}}
+                        >
+                            Добавить файл
                         </button>
                     </div>
                 )}
@@ -1440,19 +1440,19 @@ const Event = () => {
                     <h2 className="font-gilroy_bold text-white text-[32px] leading-[39px] mb-4">Создание файла</h2>
                     <div className="flex flex-col gap-4">
                         <button
-                            className="bg-white text-[#0D062D] px-6 py-2 rounded-xl"
+                            className="w-[168px] h-[41px] bg-[#DCF0DD] rounded-[12px] px-[12px] py-[8px] gap-[10px] flex items-center justify-center"
                             onClick={() => handleCreateFile('doc', 'Новый документ', 'document')}
                         >
                             Создать документ
                         </button>
                         <button
-                            className="bg-white text-[#0D062D] px-6 py-2 rounded-xl"
+                            className="w-[168px] h-[41px] bg-[#DCF0DD] rounded-[12px] px-[12px] py-[8px] gap-[10px] flex items-center justify-center"
                             onClick={() => handleCreateFile('sheet', 'Новая таблица', 'spreadsheet')}
                         >
                             Создать таблицу
                         </button>
                         <button
-                            className="bg-white text-[#0D062D] px-6 py-2 rounded-xl"
+                            className="w-[168px] h-[41px] bg-[#DCF0DD] rounded-[12px] px-[12px] py-[8px] gap-[10px] flex items-center justify-center"
                             onClick={() => handleCreateFile('slide', 'Новая презентация', 'presentation')}
                         >
                             Создать презентацию
@@ -1470,9 +1470,8 @@ const Event = () => {
                 }}
                 style={taskModalStyle}
             >
-                <div className="flex flex-col gap-4">
-                    <h2 className="font-gilroy_bold text-[#0D062D] text-[24px] mb-4">Создание папки</h2>
-                    <div className="flex flex-col gap-2">
+                <div className="flex flex-col">
+                    <div className="flex flex-col">
                         <input
                             type="text"
                             placeholder="Название папки"
