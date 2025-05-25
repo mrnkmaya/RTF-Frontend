@@ -832,7 +832,7 @@ const Event = () => {
     return (
         <div className='mx-auto p-6 bg-[#ECF2FF] w-screen h-auto'>
             <div className="bg-[#FFFFFF] rounded-3xl p-6 h-auto overflow-y-auto overflow-x-hidden">
-                <div className="flex items-center mb-[24px]">
+                <div className="flex items-center mb-[24px] flex-wrap gap-3">
                     <button 
                         onClick={() => navigate('/events')}
                         className="mr-4 text-[#0D062D] hover:text-[#0077EB] transition-colors"
@@ -842,19 +842,30 @@ const Event = () => {
                         </svg>
                     </button>
                     <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
-                    <h1 className={`${textStyleSemibold} text-[40px] leading-[48px] mr-auto`}>Мероприятия</h1>
+                    <h1 className={`${textStyleSemibold} text-[32px] leading-[38px] mr-auto min-w-[200px]`}>Мероприятия</h1>
+                    {/* Статус мероприятия */}
+                    <div className={`w-[170px] h-[48px] rounded-xl items-center p-3 flex justify-center text-center
+                        ${event.is_cancelled ? 'bg-[#FFE3E3] text-[#FF4B4B]' : 
+                          event.is_past ? 'bg-[#DCF0DD] text-[#549D73]' : 
+                          'bg-[#FFE3B0] text-[#FFA500]'}`}>
+                        <p className="text-[22px] leading-[28px] w-full">
+                            {event.is_cancelled ? 'Отменено' : 
+                             event.is_past ? 'Прошло' : 
+                             'В процессе'}
+                        </p>
+                    </div>
                     {event.is_cancelled ? (
-                        <button className={`${buttonStyle} w-[200px] mr-[12px] bg-[#FF4B4B]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(false, false)}}>Вернуть</button>
+                        <button className={`${buttonStyle} w-[170px] h-[48px] bg-[#FF4B4B]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(false, false)}}>Вернуть</button>
                     ) : event.is_past ? (
-                        <button className={`${buttonStyle} w-[200px] mr-[12px]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(false, false)}}>Вернуть</button>
+                        <button className={`${buttonStyle} w-[170px] h-[48px]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(false, false)}}>Вернуть</button>
                     ) : (
                         <>
-                            <button className={`${buttonStyle} w-[200px] mr-[12px]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(true, false)}}>Завершить</button>
-                            <button className={`${buttonStyle} w-[200px] mr-[12px] bg-[#FF4B4B]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(true, true)}}>Отменить</button>
+                            <button className={`${buttonStyle} w-[170px] h-[48px]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(true, false)}}>Завершить</button>
+                            <button className={`${buttonStyle} w-[170px] h-[48px] bg-[#FF4B4B]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(true, true)}}>Отменить</button>
                         </>
                     )}
-                    <button className={`${buttonStyle} w-[200px] mr-[12px]`} onClick={(evt) => {handleDelete(evt)}}>Удалить</button>
-                    <button className={`${buttonStyle} w-[200px]`} onClick={
+                    <button className={`${buttonStyle} w-[170px] h-[48px]`} onClick={(evt) => {handleDelete(evt)}}>Удалить</button>
+                    <button className={`${buttonStyle} w-[170px] h-[48px]`} onClick={
                         (evt) => {
                             evt.preventDefault();
                             if (isEditing) {
@@ -965,7 +976,7 @@ const Event = () => {
                     </div>
 
                     {/* Центральная колонка с задачами */}
-                    <div className="w-[395px] bg-[#F4F4F4] rounded-[15px] p-[10px] gap-[10px] flex flex-col">
+                    <div className="w-[800px] bg-[#F4F4F4] rounded-[15px] p-[10px] gap-[10px] flex flex-col">
                         <div className="flex justify-between items-center mb-4">
                             <div className="flex items-center gap-2 mb-3">
                                 <div className="bg-[#56B0FF] h-[11px] w-[11px] rounded-full flex-shrink-0"/>
@@ -989,12 +1000,11 @@ const Event = () => {
                                 <img src={GroupIcon} alt="Добавить" className="w-5 h-5" />
                             </button>
                         </div>
-                        <div className="flex flex-col gap-3 max-h-[510px] overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-3 max-h-[510px] overflow-y-auto">
                             {event.tasks?.map((task, index) => {
                                 let taskDetails;
                                 try {
                                     taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
-                                    // Проверяем наличие сокращенных имен полей
                                     if (taskDetails.t !== undefined) {
                                         taskDetails = {
                                             title: taskDetails.t || '',
@@ -1013,11 +1023,10 @@ const Event = () => {
                                     console.error('Ошибка при парсинге задачи:', error);
                                     taskDetails = task;
                                 }
-                                
                                 return (
                                     <div 
                                         key={`task-${task.id}`}
-                                        className="bg-white p-3 rounded-xl shadow-sm hover:shadow-md transition-shadow relative"
+                                        className="bg-white p-3 rounded-xl shadow-sm hover:shadow-md transition-shadow relative mb-2"
                                     >
                                         <button
                                             key={`delete-${task.id}`}
@@ -1139,20 +1148,6 @@ const Event = () => {
                                     </div>
                                 );
                             })}
-                        </div>
-                    </div>
-
-                    {/* Правая колонка со статусом */}
-                    <div className="flex flex-col gap-4">
-                        <div className={`w-[186px] h-[54px] rounded-xl items-center p-3
-                            ${event.is_cancelled ? 'bg-[#FFE3E3] text-[#FF4B4B]' : 
-                              event.is_past ? 'bg-[#DCF0DD] text-[#549D73]' : 
-                              'bg-[#FFE3B0] text-[#FFA500]'}`}>
-                            <p className={` text-center text-[28px] leading-[34px]`}>
-                                {event.is_cancelled ? 'Отменено' : 
-                                 event.is_past ? 'Прошло' : 
-                                 'В процессе'}
-                            </p>
                         </div>
                     </div>
                 </div>
