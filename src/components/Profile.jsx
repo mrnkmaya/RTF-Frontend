@@ -699,7 +699,7 @@ const Profile = () => {
             </div>
 
             {/* Блок мероприятий */}
-            {currentUserAccessLevel >= 2 && (
+            {currentUserAccessLevel >= 1 && (
                 <div className="w-[956px] h-auto bg-[#FFFFFF] rounded-3xl p-6">
                     <div className="flex items-center mb-6">
                         <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>

@@ -194,7 +194,7 @@ const Folder = () => {
                                                 if (window.confirm('Удалить файл?')) {
                                                     try {
                                                         setLoading(true);
-                                                        await axios.delete(`${BASE_URL}/projects/api/project_file/${file.id}/`, {
+                                                        await axios.delete(`${BASE_URL}/projects/project_file/${file.id}/`, {
                                                             headers: {
                                                                 'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                                                             }

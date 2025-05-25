@@ -212,6 +212,7 @@ const Event = () => {
             date: updatedEvent.date || format(new Date(), 'yyyy-MM-dd'),
             organizers: Array.isArray(updatedEvent.organizers) ? updatedEvent.organizers : [],
             is_past: updatedEvent.is_past !== undefined ? updatedEvent.is_past : false,
+            is_cancelled: updatedEvent.is_cancelled !== undefined ? updatedEvent.is_cancelled : false,
             participants: Array.isArray(updatedEvent.participants) ? updatedEvent.participants : [],
             projects: Array.isArray(updatedEvent.projects) ? updatedEvent.projects : []
         };
@@ -326,11 +327,12 @@ const Event = () => {
         });
     }
 
-    const handleChangeStatus = (newStatus) => {
+    const handleChangeStatus = (newIsPast, newIsCancelled) => {
         const updatedEvent = {
             ...event,
-            is_past: newStatus,
-            date: newStatus === false ? format(new Date(), 'yyyy-MM-dd') : event.date
+            is_past: newIsPast,
+            is_cancelled: newIsCancelled,
+            date: newIsPast === false ? format(new Date(), 'yyyy-MM-dd') : event.date
         };
         
         // Используем общую функцию обновления события
@@ -833,10 +835,16 @@ const Event = () => {
                     </button>
                     <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
                     <h1 className={`${textStyleSemibold} text-[40px] leading-[48px] mr-auto`}>Мероприятия</h1>
-                    {event.is_past
-                    ?<button className={`${buttonStyle} w-[200px] mr-[12px]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(false)}}>Вернуть</button>
-                    :<button className={`${buttonStyle} w-[200px] mr-[12px]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(true)}}>Завершить</button>
-                    }
+                    {event.is_cancelled ? (
+                        <button className={`${buttonStyle} w-[200px] mr-[12px] bg-[#FF4B4B]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(false, false)}}>Вернуть</button>
+                    ) : event.is_past ? (
+                        <button className={`${buttonStyle} w-[200px] mr-[12px]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(false, false)}}>Вернуть</button>
+                    ) : (
+                        <>
+                            <button className={`${buttonStyle} w-[200px] mr-[12px]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(true, false)}}>Завершить</button>
+                            <button className={`${buttonStyle} w-[200px] mr-[12px] bg-[#FF4B4B]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(true, true)}}>Отменить</button>
+                        </>
+                    )}
                     <button className={`${buttonStyle} w-[200px] mr-[12px]`} onClick={(evt) => {handleDelete(evt)}}>Удалить</button>
                     <button className={`${buttonStyle} w-[200px]`} onClick={
                         (evt) => {
@@ -1123,9 +1131,13 @@ const Event = () => {
                     {/* Правая колонка со статусом */}
                     <div className="flex flex-col gap-4">
                         <div className={`w-[186px] h-[54px] rounded-xl items-center p-3
-                            ${event.is_past ? 'bg-[#DCF0DD] text-[#549D73]'  : 'bg-[#FFE3B0] text-[#FFA500]' }`}>
+                            ${event.is_cancelled ? 'bg-[#FFE3E3] text-[#FF4B4B]' : 
+                              event.is_past ? 'bg-[#DCF0DD] text-[#549D73]' : 
+                              'bg-[#FFE3B0] text-[#FFA500]'}`}>
                             <p className={` text-center text-[28px] leading-[34px]`}>
-                                {event.is_past ? 'Прошло' : 'В процессе' }
+                                {event.is_cancelled ? 'Отменено' : 
+                                 event.is_past ? 'Прошло' : 
+                                 'В процессе'}
                             </p>
                         </div>
                     </div>
