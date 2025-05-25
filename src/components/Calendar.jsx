@@ -26,7 +26,10 @@ const Calendar = () => {
     // console.log(getDay(firstDayOfMonth), getDay(lastDayOfMonth), startingDayIndex, endingDayIndex);
 
     const [events, setEvents] = useState([]);
-    const [isMy, setIsMy] = useState(false);    
+    const [isMy, setIsMy] = useState(false);
+
+    // Получаем id текущего профиля
+    const profileId = Number(localStorage.getItem('profile_id'));
 
     useEffect(() => {
         if(localStorage.getItem('access_token') === null){                   
@@ -97,14 +100,17 @@ const Calendar = () => {
                     return <div key={`empty-${index}`} className={`p-2 h-[107px] text-center bg-white border border-black border-opacity-25`}/>;
                 })}
                 {daysInMonth.map((day, index) => {
-                    let event = events.find(event => isSameDay(new Date(event.date), day));
-                    // console.log(event);
-                    let eventsAmount = 0
+                    // Фильтруем события по режиму 'Мои'
+                    const filteredEvents = isMy
+                        ? events.filter(event =>
+                            (Array.isArray(event.participants) && event.participants.includes(profileId)) ||
+                            (Array.isArray(event.organizers) && event.organizers.includes(profileId))
+                        )
+                        : events;
+                    let event = filteredEvents.find(event => isSameDay(new Date(event.date), day));
+                    let eventsAmount = 0;
                     if (event !== undefined) {
-                        if (isMy && !(event.participants.includes(+localStorage.getItem('current_profile_id')) || event.organizers.includes(+localStorage.getItem('current_profile_id')))) {
-                            event = undefined;
-                        }
-                        eventsAmount = events.filter(event => isSameDay(new Date(event.date), day)).length
+                        eventsAmount = filteredEvents.filter(event => isSameDay(new Date(event.date), day)).length;
                     }
                     return <div key={index}
                     className={`h-[107px] text-center bg-white border relative
