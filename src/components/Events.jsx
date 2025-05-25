@@ -64,6 +64,10 @@ const Events = () => {
     const [title, setTitle] = useState('');
     const [description, setDesc] = useState('');
     const [showSuccess, setShowSuccess] = useState(false);
+    const [search, setSearch] = useState('');
+    const [dateSort, setDateSort] = useState('newest'); // newest, oldest
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
 
     useEffect(() => {
         if(localStorage.getItem('access_token') === null){                   
@@ -178,13 +182,73 @@ const Events = () => {
         }
     }
 
+    // Фильтрация мероприятий по поиску
+    let filteredEvents = events.filter(event => {
+        const searchLower = search.toLowerCase();
+        return (
+            event.title?.toLowerCase().includes(searchLower) ||
+            event.description?.toLowerCase().includes(searchLower)
+        );
+    });
+
+    // Фильтр по диапазону дат
+    filteredEvents = filteredEvents.filter(event => {
+        if (!event.date) return true;
+        const eventDate = new Date(event.date);
+        const from = dateFrom ? new Date(dateFrom) : null;
+        const to = dateTo ? new Date(dateTo) : null;
+        if (from && eventDate < from) return false;
+        if (to && eventDate > to) return false;
+        return true;
+    });
+
+    // Сортировка по дате
+    filteredEvents = filteredEvents.sort((a, b) => {
+        if (!a.date || !b.date) return 0;
+        if (dateSort === 'newest') {
+            return new Date(b.date) - new Date(a.date);
+        } else {
+            return new Date(a.date) - new Date(b.date);
+        }
+    });
+
     return (
         <div id='background' className="bg-[#ECF2FF] w-screen h-auto p-6">
             <div className="bg-[#FFFFFF] rounded-3xl p-6 h-screen overflow-y-scroll">
-                <div className="flex items-center mb-[24px]">
+                <div className="flex items-center mb-[24px] flex-wrap gap-3">
                     <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
                     <h1 className={`${textStyleSemibold} text-[40px] leading-[48px] mr-auto`}>Мероприятия</h1>
-                    {/* <button className={`${buttonStyle} mr-3`}>Сортировать</button> */}
+                    {/* Поисковик */}
+                    <input
+                        type="text"
+                        placeholder="Поиск по названию или описанию..."
+                        className="w-[320px] h-[40px] rounded-lg bg-[#F1F4F9] border-[#D8D8D8] px-4 mr-4 text-[18px]"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                    />
+                    {/* Фильтр по дате */}
+                    <select
+                        className="h-[40px] rounded-lg bg-[#F1F4F9] border-[#D8D8D8] px-2 text-[16px] mr-2"
+                        value={dateSort}
+                        onChange={e => setDateSort(e.target.value)}
+                    >
+                        <option value="newest">Сначала новые</option>
+                        <option value="oldest">Сначала старые</option>
+                    </select>
+                    <input
+                        type="date"
+                        className="h-[40px] rounded-lg bg-[#F1F4F9] border-[#D8D8D8] px-2 text-[16px] mr-2"
+                        value={dateFrom}
+                        onChange={e => setDateFrom(e.target.value)}
+                        placeholder="От"
+                    />
+                    <input
+                        type="date"
+                        className="h-[40px] rounded-lg bg-[#F1F4F9] border-[#D8D8D8] px-2 text-[16px] mr-4"
+                        value={dateTo}
+                        onChange={e => setDateTo(e.target.value)}
+                        placeholder="До"
+                    />
                     <button className={`${buttonStyle} w-[260px]`} onClick={openModal}>Создать мероприятие</button>
                 </div>
                 <Modal
@@ -238,7 +302,7 @@ const Events = () => {
                 />
             )}
                 <div className="flex justify-start flex-wrap">
-                    {events.map((event) => {
+                    {filteredEvents.map((event) => {
                         if (!event.is_past) {
                         return <Link to={`/event?id=${event.id}`} key={event.id} >
                             <div className={`${EVENT_PLACEHOLDER_STYLE} flex flex-col`}>
