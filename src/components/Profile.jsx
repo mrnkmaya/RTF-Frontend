@@ -230,7 +230,7 @@ const Profile = () => {
                                 };
                             });
 
-                            return {
+                            const processedTask = {
                                 id: task.id,
                                 title: taskDetails.t || taskDetails.title || 'Без названия',
                                 description: taskDetails.d || taskDetails.description || '',
@@ -247,14 +247,18 @@ const Profile = () => {
                                     e: taskDetails.e || taskDetails.executor || null,
                                     ev: taskDetails.ev || taskDetails.event || null,
                                     st: subtasks
-                                })
+                                }),
+                                is_past: (typeof task.is_past !== 'undefined' ? task.is_past : (typeof taskDetails.is_past !== 'undefined' ? taskDetails.is_past : false)),
                             };
+
+                            return processedTask;
                         } catch (error) {
                             console.error('Error processing task:', error);
                             return null;
                         }
                     })
-                    .filter(task => task !== null);
+                    .filter(task => task !== null)
+                    .filter(task => !task.is_past || task.is_past === false || task.is_past === 0 || task.is_past === 'false');
                 
                 setProfileData(response.data.profile);
                 setEvents(response.data.events || []);
@@ -726,7 +730,8 @@ const Profile = () => {
                                     <option value="Жилищно-бытовая">Жилищно-бытовая</option>
                                     <option value="Спортивно-массовая">Спортивно-массовая</option>
                                     <option value="Организационно-массовая">Организационно-массовая</option>
-                                    <option value="Социально-правовая">Социально правовая</option>
+                                    <option value="Социально-правовая">Социально-правовая</option>
+                                    <option value="Социально-правовая">Информационная</option>
                                     </select>
                                 ) : (
                                     <p className={DATA_STYLE}>{checkPlaceholder(profileData.commission)}</p>
