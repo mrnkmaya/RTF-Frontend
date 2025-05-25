@@ -90,7 +90,7 @@ const Event = () => {
         deadline: '',
         deadlineTime: '',
         status: 2,
-        assignee: '',
+        assignee: [],
         subtasks: []
     });
     const [subtaskInput, setSubtaskInput] = useState('');
@@ -477,7 +477,7 @@ const Event = () => {
             d: newTask.description?.trim() || '',
             dl: deadlineString,
             s: newTask.status || 2,
-            e: newTask.assignee || null,
+            e: newTask.assignee || [],
             ev: parseInt(eventData.id),
             st: newTask.subtasks.map(subtask => ({
                 t: (subtask.title || '').trim(),
@@ -539,7 +539,7 @@ const Event = () => {
                 deadline: '',
                 deadlineTime: '',
                 status: 2,
-                assignee: '',
+                assignee: [],
                 subtasks: []
             });
             setTaskModalIsOpen(false);
@@ -563,7 +563,7 @@ const Event = () => {
                     description: taskDetails.d || '',
                     deadline: taskDetails.dl || '',
                     status: taskDetails.s || 2,
-                    executor: taskDetails.e || '',
+                    executor: taskDetails.e || [],
                     event: taskDetails.ev || '',
                     subtasks: (taskDetails.st || []).map(st => ({
                         title: st.t || '',
@@ -580,7 +580,14 @@ const Event = () => {
                 deadline = taskDetails.deadline || '';
                 deadlineTime = '';
             }
-            const executorId = task.executor || taskDetails.executor || taskDetails.user || '';
+
+            // Получаем список ID исполнителей
+            const executorIds = Array.isArray(taskDetails.executor) 
+                ? taskDetails.executor 
+                : taskDetails.executor 
+                    ? [taskDetails.executor] 
+                    : [];
+
             setSelectedTask(task);
             setNewTask({
                 title: taskDetails?.title || '',
@@ -588,11 +595,12 @@ const Event = () => {
                 deadline,
                 deadlineTime,
                 status: taskDetails?.status || 2,
-                assignee: executorId.toString(),
+                assignee: executorIds,
                 subtasks: taskDetails?.subtasks || []
             });
             setEditTaskModalIsOpen(true);
         } catch (error) {
+            console.error('Ошибка при обработке задачи:', error);
             setSelectedTask(task);
             setNewTask({
                 title: '',
@@ -600,7 +608,7 @@ const Event = () => {
                 deadline: '',
                 deadlineTime: '',
                 status: 2,
-                assignee: '',
+                assignee: [],
                 subtasks: []
             });
             setEditTaskModalIsOpen(true);
@@ -620,7 +628,7 @@ const Event = () => {
                 d: newTask.description?.trim() || '',
                 dl: deadlineString,
                 s: newTask.status || 2,
-                e: newTask.assignee || null,
+                e: newTask.assignee || [],
                 ev: parseInt(eventData.id),
                 st: newTask.subtasks.map(subtask => ({
                     t: (subtask.title || '').trim(),
@@ -633,7 +641,7 @@ const Event = () => {
             const taskData = {
                 task: taskJson,
                 event: parseInt(eventData.id),
-                executor: newTask.assignee || null
+                executor: newTask.assignee || []
             };
 
             console.log('Отправляемые данные:', taskData);
@@ -654,7 +662,7 @@ const Event = () => {
                     description: updatedTaskDetails.d || updatedTaskDetails.description || '',
                     deadline: updatedTaskDetails.dl || updatedTaskDetails.deadline || null,
                     status: updatedTaskDetails.s || updatedTaskDetails.status || 2,
-                    executor: updatedTaskDetails.e || updatedTaskDetails.executor || null,
+                    executor: updatedTaskDetails.e || updatedTaskDetails.executor || [],
                     event: updatedTaskDetails.ev || updatedTaskDetails.event || parseInt(eventData.id),
                     subtasks: (updatedTaskDetails.st || updatedTaskDetails.subtasks || []).map(st => ({
                         title: st.t || st.title || '',
@@ -972,7 +980,7 @@ const Event = () => {
                                         deadline: '',
                                         deadlineTime: '',
                                         status: 2,
-                                        assignee: '',
+                                        assignee: [],
                                         subtasks: []
                                     });
                                     setTaskModalIsOpen(true);
@@ -993,7 +1001,7 @@ const Event = () => {
                                             description: taskDetails.d || '',
                                             deadline: taskDetails.dl || null,
                                             status: taskDetails.s || 2,
-                                            executor: taskDetails.e || null,
+                                            executor: taskDetails.e || [],
                                             event: taskDetails.ev || null,
                                             subtasks: (taskDetails.st || []).map(st => ({
                                                 title: st.t || '',
@@ -1113,9 +1121,18 @@ const Event = () => {
                                                 </div>
                                                 {/* Исполнитель справа */}
                                                 {taskDetails?.executor && (
-                                                    <span className="bg-[#F4F4F4] px-2 py-1 rounded-xl font-gilroy_semibold text-[#0D062D] text-[15px] ml-2">
-                                                        {formatUserName(orgs[taskDetails.executor])}
-                                                    </span>
+                                                    <div className="flex gap-1">
+                                                        {Array.isArray(taskDetails.executor) 
+                                                            ? taskDetails.executor.map(executorId => (
+                                                                <span key={executorId} className="bg-[#F4F4F4] px-2 py-1 rounded-xl font-gilroy_semibold text-[#0D062D] text-[15px]">
+                                                                    {formatUserName(orgs[executorId])}
+                                                                </span>
+                                                            ))
+                                                            : <span className="bg-[#F4F4F4] px-2 py-1 rounded-xl font-gilroy_semibold text-[#0D062D] text-[15px]">
+                                                                {formatUserName(orgs[taskDetails.executor])}
+                                                              </span>
+                                                        }
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -1281,10 +1298,19 @@ const Event = () => {
                     <div className="flex flex-col gap-2">
                         <select
                             className="bg-[#F1F4F9] rounded-lg p-2"
+                            multiple
                             value={newTask.assignee}
-                            onChange={(e) => setNewTask({...newTask, assignee: e.target.value})}
+                            onChange={(e) => {
+                                const options = e.target.options;
+                                const selectedIds = [];
+                                for (let i = 0; i < options.length; i++) {
+                                    if (options[i].selected) {
+                                        selectedIds.push(options[i].value);
+                                    }
+                                }
+                                setNewTask({...newTask, assignee: selectedIds});
+                            }}
                         >
-                            <option key="default-assignee" value="">Ответственный</option>
                             {users?.map((user) => (
                                 <option key={`assignee-${user.id}`} value={user.id}>
                                     {user.full_name}
@@ -1400,10 +1426,19 @@ const Event = () => {
                     <div className="flex flex-col gap-2">
                         <select
                             className="bg-[#F1F4F9] rounded-lg p-2"
-                            value={newTask.assignee || ''}
-                            onChange={(e) => setNewTask({...newTask, assignee: e.target.value})}
+                            multiple
+                            value={newTask.assignee}
+                            onChange={(e) => {
+                                const options = e.target.options;
+                                const selectedIds = [];
+                                for (let i = 0; i < options.length; i++) {
+                                    if (options[i].selected) {
+                                        selectedIds.push(options[i].value);
+                                    }
+                                }
+                                setNewTask({...newTask, assignee: selectedIds});
+                            }}
                         >
-                            <option key="default-assignee" value="">Ответственный</option>
                             {users?.map((user) => (
                                 <option key={`assignee-${user.id}`} value={user.id}>
                                     {user.full_name}
