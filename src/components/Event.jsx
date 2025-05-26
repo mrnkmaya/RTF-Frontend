@@ -71,6 +71,25 @@ const Event = () => {
     const location = useLocation();
     const eventData = Object.fromEntries(new URLSearchParams(location.search));
     const navigate = useNavigate();
+    const [userLevel, setUserLevel] = useState(null);
+
+    useEffect(() => {
+        // Получаем данные пользователя при загрузке компонента
+        const fetchUserData = async () => {
+            try {
+                const response = await axios.get(`${BASE_URL}/api/user/profile/`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                setUserLevel(response.data.access_level);
+            } catch (error) {
+                console.error('Ошибка при получении данных пользователя:', error);
+            }
+        };
+
+        fetchUserData();
+    }, []);
 
     const [titleError, setTitleError] = useState(false);
     const [event, setEvent] = useState([]);
@@ -97,6 +116,7 @@ const Event = () => {
     const [descriptionModalIsOpen, setDescriptionModalIsOpen] = useState(false);
     const [subtasksModalIsOpen, setSubtasksModalIsOpen] = useState(false);
     const [selectedTaskForSubtasks, setSelectedTaskForSubtasks] = useState(null);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     useEffect(() => {
         // Проверяем наличие ID события
@@ -871,7 +891,7 @@ const Event = () => {
             <div className="bg-[#FFFFFF] rounded-3xl p-6 h-auto overflow-y-auto overflow-x-hidden">
                 <div className="flex items-center mb-[24px] flex-wrap gap-3">
                     <button 
-                        onClick={() => navigate('/events')}
+                        onClick={() => navigate(event.is_past ? '/archive' : '/events')}
                         className="mr-4 text-[#0D062D] hover:text-[#0077EB] transition-colors"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -891,26 +911,76 @@ const Event = () => {
                              'В процессе'}
                         </p>
                     </div>
-                    {event.is_cancelled ? (
-                        <button className={`${buttonStyle} w-[170px] h-[48px] bg-[#FF4B4B]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(false, false)}}>Вернуть</button>
-                    ) : event.is_past ? (
-                        <button className={`${buttonStyle} w-[170px] h-[48px]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(false, false)}}>Вернуть</button>
-                    ) : (
-                        <>
-                            <button className={`${buttonStyle} w-[170px] h-[48px]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(true, false)}}>Завершить</button>
-                            <button className={`${buttonStyle} w-[170px] h-[48px] bg-[#FF4B4B]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(true, true)}}>Отменить</button>
-                        </>
-                    )}
-                    <button className={`${buttonStyle} w-[170px] h-[48px]`} onClick={(evt) => {handleDelete(evt)}}>Удалить</button>
-                    <button className={`${buttonStyle} w-[170px] h-[48px]`} onClick={
-                        (evt) => {
-                            evt.preventDefault();
-                            if (isEditing) {
-                                updateEvent(event);
-                            }
-                            setIsEditing(!isEditing);
-                        }
-                    }>{isEditing ? 'Подтвердить' : 'Редактировать'}</button>
+                    <div className="relative">
+                        <button 
+                            className={`${buttonStyle} w-[170px] h-[48px]`} 
+                            onClick={() => {
+                                if (isEditing) {
+                                    updateEvent(event);
+                                    setIsEditing(false);
+                                } else {
+                                    setIsDropdownOpen(!isDropdownOpen);
+                                }
+                            }}
+                        >
+                            {isEditing ? 'Подтвердить' : 'Редактировать'}
+                        </button>
+                        {isDropdownOpen && !isEditing && (
+                            <div className="absolute right-0 mt-2 w-[170px] bg-white rounded-xl shadow-lg z-50">
+                                <button 
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 rounded-t-xl"
+                                    onClick={() => {
+                                        setIsEditing(true);
+                                        setIsDropdownOpen(false);
+                                    }}
+                                >
+                                    Изменить
+                                </button>
+                                {!event.is_cancelled && !event.is_past && (
+                                    <>
+                                        <button 
+                                            className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                                            onClick={() => {
+                                                handleChangeStatus(true, false);
+                                                setIsDropdownOpen(false);
+                                            }}
+                                        >
+                                            Завершить
+                                        </button>
+                                        <button 
+                                            className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                                            onClick={() => {
+                                                handleChangeStatus(true, true);
+                                                setIsDropdownOpen(false);
+                                            }}
+                                        >
+                                            Отменить
+                                        </button>
+                                    </>
+                                )}
+                                {(event.is_cancelled || event.is_past) && (
+                                    <button 
+                                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                                        onClick={() => {
+                                            handleChangeStatus(false, false);
+                                            setIsDropdownOpen(false);
+                                        }}
+                                    >
+                                        Вернуть
+                                    </button>
+                                )}
+                                <button 
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 rounded-b-xl text-[#FF4B4B]"
+                                    onClick={() => {
+                                        handleDelete();
+                                        setIsDropdownOpen(false);
+                                    }}
+                                >
+                                    Удалить
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <div className="flex justify-between gap-10 h-[calc(100vh-180px)]">
                     {/* Левая колонка с информацией о мероприятии */}
@@ -981,7 +1051,7 @@ const Event = () => {
                         ?
                         <div>
                             {event.participants?.map((part) => {
-                                return <p key={`participant-${part}`} className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[part]}</p>
+                                return <p key={`participant-${part}`} className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px]">{orgs[part]}</p>
                             })}
                             <select 
                                 multiple
@@ -1007,7 +1077,7 @@ const Event = () => {
                         </div>
                         :
                         event.participants?.map((part) => {
-                            return <p key={`participant-display-${part}`} className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[part]}</p>
+                            return <p key={`participant-display-${part}`} className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px]">{orgs[part]}</p>
                         })
                         }
                         <div className="flex items-center gap-2 mb-4">
