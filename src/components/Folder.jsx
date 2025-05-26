@@ -45,6 +45,8 @@ const Folder = () => {
     const [loading, setLoading] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const navigate = useNavigate();
+    const [addLinkModalIsOpen, setAddLinkModalIsOpen] = useState(false);
+    const [newLink, setNewLink] = useState({ url: '', title: '' });
 
     useEffect(() => {
         if (!localStorage.getItem('access_token')) {
@@ -245,54 +247,156 @@ const Folder = () => {
                             )}
                         </div>
                         
-                        <button 
-                            className={`w-[168px] h-[41px] bg-[#DCF0DD] rounded-[12px] px-[12px] py-[8px] gap-[10px] flex items-center justify-center font-gilroy_semibold text-[#0D062D] text-[16px] leading-[100%] tracking-[0px] ${loading ? 'opacity-50' : ''}`}
-                            onClick={() => setFilesModalIsOpen(true)}
-                            disabled={loading}
-                        >
-                            {loading ? 'Загрузка...' : 'Добавить файл'}
-                        </button>
-                        
-                        <Modal
-                            isOpen={filesModalIsOpen}
-                            onRequestClose={closeModal}
-                            style={filesModalWindowStyle}
-                            ariaHideApp={false}
-                        >
-                            <div className="flex flex-col gap-[12px]">
-                                <input 
-                                    type="text" 
-                                    className="pl-[10px] rounded border p-1 flex-1 mb-2 bg-[#F1F4F9] text-[#0D062D] text-[16px]"
-                                    placeholder="Название"
-                                    value={fileName}
-                                    onChange={(e) => setFileName(e.target.value)}
-                                    required
-                                    disabled={loading}
-                                />
-                                <select 
-                                    value={docType}
-                                    onChange={(e) => setDocType(e.target.value)}
-                                    className="rounded p-1 border bg-[#F1F4F9] text-[#0D062D] text-[16px] mb-2"
-                                    disabled={loading}
-                                >
-                                    <option value="doc">Документ</option>
-                                    <option value="sheet">Таблица</option>
-                                    <option value="slide">Презентация</option>
-                                    <option value="form">Форма</option>
-                                </select>
+                        <div className="flex gap-2 mb-4">
                             <button 
-                                    className={greenButtonStyle}
-                                    style={{fontFamily: 'Gilroy', fontWeight: 500, letterSpacing: 0}}
-                                onClick={createFile}
-                                disabled={!fileName.trim() || loading}
+                                className={`w-[168px] h-[41px] bg-[#DCF0DD] rounded-[12px] px-[12px] py-[8px] gap-[10px] flex items-center justify-center font-gilroy_semibold text-[#0D062D] text-[16px] leading-[100%] tracking-[0px] ${loading ? 'opacity-50' : ''}`}
+                                onClick={() => setFilesModalIsOpen(true)}
+                                disabled={loading}
                             >
-                                    {loading ? 'Создание...' : 'Создать файл'}
+                                {loading ? 'Загрузка...' : 'Добавить файл'}
                             </button>
-                            </div>
-                        </Modal>
+                            <button
+                                className={`w-[168px] h-[41px] border border-[#0077EB] rounded-[12px] px-[12px] py-[8px] gap-[10px] flex items-center justify-center font-gilroy_semibold text-[#0077EB] text-[16px] leading-[100%] tracking-[0px]`}
+                                onClick={() => setAddLinkModalIsOpen(true)}
+                                disabled={loading}
+                            >
+                                Добавить ссылку
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
+            <Modal
+                isOpen={filesModalIsOpen}
+                onRequestClose={closeModal}
+                style={filesModalWindowStyle}
+                ariaHideApp={false}
+            >
+                <div className="flex flex-col gap-[12px]">
+                    <input 
+                        type="text" 
+                        className="pl-[10px] rounded border p-1 flex-1 mb-2 bg-[#F1F4F9] text-[#0D062D] text-[16px]"
+                        placeholder="Название"
+                        value={fileName}
+                        onChange={(e) => setFileName(e.target.value)}
+                        required
+                        disabled={loading}
+                    />
+                    <select 
+                        value={docType}
+                        onChange={(e) => setDocType(e.target.value)}
+                        className="rounded p-1 border bg-[#F1F4F9] text-[#0D062D] text-[16px] mb-2"
+                        disabled={loading}
+                    >
+                        <option value="doc">Документ</option>
+                        <option value="sheet">Таблица</option>
+                        <option value="slide">Презентация</option>
+                        <option value="form">Форма</option>
+                    </select>
+                <button 
+                        className={greenButtonStyle}
+                        style={{fontFamily: 'Gilroy', fontWeight: 500, letterSpacing: 0}}
+                    onClick={createFile}
+                    disabled={!fileName.trim() || loading}
+                >
+                        {loading ? 'Создание...' : 'Создать файл'}
+                </button>
+                </div>
+            </Modal>
+            <Modal
+                isOpen={addLinkModalIsOpen}
+                onRequestClose={() => setAddLinkModalIsOpen(false)}
+                style={{
+                    content: {
+                        top: '50%',
+                        left: '50%',
+                        right: 'auto',
+                        bottom: 'auto',
+                        marginRight: '-50%',
+                        transform: 'translate(-50%, -50%)',
+                        backgroundColor: '#FFFFFF',
+                        width: '400px',
+                        height: '220px',
+                        borderRadius: '24px',
+                        padding: '24px',
+                        border: 'none',
+                        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)',
+                        overflow: 'hidden'
+                    }
+                }}
+            >
+                <div className="flex flex-col gap-4 h-full justify-between">
+                    <div>
+                        <h2 className="font-gilroy_bold text-[#0D062D] text-[24px] leading-[30px] mb-2">Добавить ссылку на файл</h2>
+                        <input
+                            type="text"
+                            placeholder="Название файла (необязательно)"
+                            className="bg-[#F1F4F9] rounded-lg p-2 w-full mb-2"
+                            value={newLink.title}
+                            onChange={e => setNewLink({ ...newLink, title: e.target.value })}
+                        />
+                        <input
+                            type="url"
+                            placeholder="Вставьте ссылку на файл"
+                            className="bg-[#F1F4F9] rounded-lg p-2 w-full"
+                            value={newLink.url}
+                            onChange={e => setNewLink({ ...newLink, url: e.target.value })}
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2 mt-4">
+                        <button
+                            className="bg-[#F1F4F9] text-[#0D062D] px-6 py-2 rounded-xl"
+                            onClick={() => setAddLinkModalIsOpen(false)}
+                        >
+                            Отмена
+                        </button>
+                        <button
+                            className='bg-[#00D166] text-white p-[7px] rounded-lg'
+                            onClick={async () => {
+                                if (newLink.url) {
+                                    try {
+                                        setLoading(true);
+                                        await axios.post(
+                                            `${BASE_URL}/projects/${projId}/create_google_service/`,
+                                            {
+                                                file_url: newLink.url,
+                                                title: newLink.title || newLink.url,
+                                                custom_name: newLink.title || newLink.url,
+                                                doc_type: 'link'
+                                            },
+                                            {
+                                                headers: {
+                                                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                                                }
+                                            }
+                                        );
+                                        setNewLink({ url: '', title: '' });
+                                        setAddLinkModalIsOpen(false);
+                                        // Обновить список файлов
+                                        const updatedProject = await axios.get(`${BASE_URL}/projects/${projId}/`, {
+                                            headers: {
+                                                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                                            }
+                                        });
+                                        setProject(updatedProject.data);
+                                    } catch (error) {
+                                        alert(
+                                            'Ошибка при добавлении ссылки!\n' +
+                                            (error.response?.data ? JSON.stringify(error.response.data) : error.message)
+                                        );
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                } else {
+                                    alert('Введите ссылку на файл!');
+                                }
+                            }}
+                        >
+                            Добавить
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };
