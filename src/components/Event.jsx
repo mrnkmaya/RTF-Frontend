@@ -303,13 +303,17 @@ const Event = () => {
     };
 
     const updateOrganizers = (selectedUserIds) => {
-        const updatedEvent = {
-            ...event,
+        setEvent(prevEvent => ({
+            ...prevEvent,
             organizers: selectedUserIds
-        };
-        
-        // Используем общую функцию обновления события
-        updateEvent(updatedEvent);
+        }));
+    };
+
+    const updateParticipants = (selectedUserIds) => {
+        setEvent(prevEvent => ({
+            ...prevEvent,
+            participants: selectedUserIds
+        }));
     };
 
     const handleDelete = (evt) => {
@@ -899,7 +903,7 @@ const Event = () => {
                             onChange={(e) => {setEvent({...event, description: e.target.value })}}/>
                         : <p className="font-gilroy_bold text-[24px] text-[#0D062D] leading-[30px] mb-[12px] line-clamp-3 overflow-hidden max-w-[395px]" style={{display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', wordBreak: 'break-word'}}>{event.description}</p>
                         }
-                        <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Организаторы</p>
+                        <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Ответственные</p>
                         {isEditing
                         ?
                         <div>
@@ -931,6 +935,40 @@ const Event = () => {
                         :
                         event.organizers?.map((org) => {
                             return <p key={`organizer-display-${org}`} className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[org]}</p>
+                        })
+                        }
+                        <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50 mt-4`}>Рабочка</p>
+                        {isEditing
+                        ?
+                        <div>
+                            {event.participants?.map((part) => {
+                                return <p key={`participant-${part}`} className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[part]}</p>
+                            })}
+                            <select 
+                                multiple
+                                value={event.participants || []}
+                                className="bg-[#F1F1F1] rounded pl-[10px]"
+                                onChange={(e) => {
+                                    const options = e.target.options;
+                                    const selectedIds = [];
+                                    for (let i = 0; i < options.length; i++) {
+                                    if (options[i].selected) {
+                                        selectedIds.push(options[i].value);
+                                    }
+                                    }
+                                    updateParticipants(selectedIds);
+                                }}
+                                >
+                                {users?.map((user) => (
+                                    <option key={`user-option-${user.id}`} value={user.id}>
+                                    {user.full_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        :
+                        event.participants?.map((part) => {
+                            return <p key={`participant-display-${part}`} className="text-[#0D062D] font-gilroy_semibold text-[22px] leading-[27px] mb-3">{orgs[part]}</p>
                         })
                         }
                         <div className="flex items-center gap-2 mb-4">

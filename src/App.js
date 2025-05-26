@@ -10,6 +10,7 @@ import Event from "./components/Event";
 import Team from "./components/Team";
 import Archive from "./components/Archive";
 import Folder from "./components/Folder";
+import Admin from "./components/Admin";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path='/team' element={<Team/>}/>
           <Route path='/archive' element={<Archive/>}/>
           <Route path='/folder' element={<Folder/>}/>
+          <Route path='/admin' element={<Admin/>}/>
         </Routes>
       </div>
     </BrowserRouter>

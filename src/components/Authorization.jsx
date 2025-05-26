@@ -27,7 +27,8 @@ const Authorization = () => {
             const accessToken = response.data.access;
             const refreshToken = response.data.refresh;
             const profileId = response.data.profile_id;
-            const accessLevel = response.data.access_level; 
+            const accessLevel = response.data.access_level;
+            const isAdmin = response.data.is_admin;
     
             if (!profileId) {
                 throw new Error("profile_id is missing in response");
@@ -37,11 +38,16 @@ const Authorization = () => {
             localStorage.setItem('access_token', accessToken);
             localStorage.setItem('refresh_token', refreshToken);
             localStorage.setItem('profile_id', profileId);
-            localStorage.setItem('access_level', accessLevel); 
+            localStorage.setItem('access_level', accessLevel);
+            localStorage.setItem('is_admin', isAdmin);
     
             axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
     
-            window.location.href = `/profile?id=${profileId}`;
+            if (isAdmin) {
+                window.location.href = `${BASE_URL}/admin`;
+            } else {
+                window.location.href = `/profile?id=${profileId}`;
+            }
     
         } catch (error) {
             const errorTextBox = document.getElementById('error-text');

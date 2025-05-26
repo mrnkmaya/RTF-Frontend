@@ -36,6 +36,7 @@ const Profile = () => {
         subtasks: []
     });
     const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+    const accessLevel = localStorage.getItem('access_level');
 
     const updateSubtaskStatus = async (taskId, subtaskIndex, newStatus) => {
         try {
@@ -651,6 +652,14 @@ const Profile = () => {
                             >
                                 {isLoading ? 'Сохранение...' : isEditing ? 'Сохранить' : 'Редактировать'}
                             </button>
+                            {accessLevel === '3' && (
+                                <button 
+                                    className={`${BUTTON_STYLE} ml-4 bg-[#FF4B4B]`}
+                                    onClick={() => window.location.href = '/admin'}
+                                >
+                                    Админ-панель
+                                </button>
+                            )}
                             <button
                                 className={`${BUTTON_STYLE} ml-4 bg-[#FF4B4B]`}
                                 onClick={() => setLogoutModalOpen(true)}
@@ -739,7 +748,7 @@ const Profile = () => {
                                     <option value="Спортивно-массовая">Спортивно-массовая</option>
                                     <option value="Организационно-массовая">Организационно-массовая</option>
                                     <option value="Социально-правовая">Социально-правовая</option>
-                                    <option value="Социально-правовая">Информационная</option>
+                                    <option value="Информационная">Информационная</option>
                                     </select>
                                 ) : (
                                     <p className={DATA_STYLE}>{checkPlaceholder(profileData.commission)}</p>
@@ -1241,7 +1250,7 @@ const Profile = () => {
                         className='bg-[#FF4B4B] text-white p-[7px] rounded-lg'
                         onClick={() => {
                             localStorage.clear();
-                            window.location.href = 'http://localhost:3000';
+                            window.location.href = '/';
                         }}
                     >
                         Выйти
