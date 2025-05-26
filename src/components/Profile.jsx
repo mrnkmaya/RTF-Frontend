@@ -601,7 +601,7 @@ const Profile = () => {
                                 )}
                             </Link>
                         ))}
-                        {inProgressTasks.length === 0 && (
+                        {notStartedTasks.length === 0 && (
                             <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
                         )}
                     </div>
@@ -652,7 +652,7 @@ const Profile = () => {
                                 )}
                             </Link>
                         ))}
-                        {completedTasks.length === 0 && (
+                        {notStartedTasks.length === 0 && (
                             <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
                         )}
                     </div>
@@ -1003,7 +1003,7 @@ const Profile = () => {
                                     const taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
                                     const executors = Array.isArray(taskDetails.e) ? taskDetails.e : [taskDetails.e].filter(Boolean);
                                     const executorsIds = executors.map(id => parseInt(id));
-                                    return task.status === 2 && executorsIds.includes(parseInt(viewedProfileId));
+                                    return task.status === 1 && executorsIds.includes(parseInt(viewedProfileId));
                                 }).length === 0 && (
                                     <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
                                 )}
@@ -1095,7 +1095,12 @@ const Profile = () => {
                                         </div>
                                     </div>
                                 ))}
-                                {tasks.filter(task => task.status === 1 && String(task.executor) === String(viewedProfileId)).length === 0 && (
+                                {tasks.filter(task => {
+                                    const taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
+                                    const executors = Array.isArray(taskDetails.e) ? taskDetails.e : [taskDetails.e].filter(Boolean);
+                                    const executorsIds = executors.map(id => parseInt(id));
+                                    return task.status === 2 && executorsIds.includes(parseInt(viewedProfileId));
+                                }).length === 0 && (
                                     <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
                                 )}
                             </div>
@@ -1186,7 +1191,12 @@ const Profile = () => {
                                         </div>
                                     </div>
                                 ))}
-                                {tasks.filter(task => task.status === 3 && String(task.executor) === String(viewedProfileId)).length === 0 && (
+                                {tasks.filter(task => {
+                                    const taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
+                                    const executors = Array.isArray(taskDetails.e) ? taskDetails.e : [taskDetails.e].filter(Boolean);
+                                    const executorsIds = executors.map(id => parseInt(id));
+                                    return task.status === 3 && executorsIds.includes(parseInt(viewedProfileId));
+                                }).length === 0 && (
                                     <p className="text-[#0D062D] text-opacity-30 text-sm">Нет задач</p>
                                 )}
                             </div>

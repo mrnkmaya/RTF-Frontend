@@ -312,7 +312,7 @@ const Events = () => {
                             <div className={`${EVENT_PLACEHOLDER_STYLE} flex flex-col`}>
                                 <h3 className={`${textStyleSemibold} text-[32px] leading-[43px] mb-3 text-[#0D062D] truncate`}>{event.title}</h3>
                                 <p className={`${textStyleRegular} text-[20px] leading-[24px] mb-[51px] text-[#0D062D] truncate`}>{event.description}</p>
-                                <p className={`${textStyleSemibold} text-[20px] leading-[24px] mb-1 text-[#0D062D] mt-auto`}>Организатор</p>
+                                <p className={`${textStyleSemibold} text-[20px] leading-[24px] mb-1 text-[#0D062D] mt-auto`}>Ответственный</p>
                                 <div className="flex">
                                     <img src={avatar_placeholder} alt='Аватарка организатора' width='23' height='23' className="rounded-[50%] mr-1"/>
                                     {   
