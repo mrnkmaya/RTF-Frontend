@@ -95,6 +95,8 @@ const Event = () => {
     });
     const [subtaskInput, setSubtaskInput] = useState('');
     const [descriptionModalIsOpen, setDescriptionModalIsOpen] = useState(false);
+    const [subtasksModalIsOpen, setSubtasksModalIsOpen] = useState(false);
+    const [selectedTaskForSubtasks, setSelectedTaskForSubtasks] = useState(null);
 
     useEffect(() => {
         // Проверяем наличие ID события
@@ -519,8 +521,8 @@ const Event = () => {
                 executor: taskDetails.e || taskDetails.executor || null,
                 event: taskDetails.ev || taskDetails.event || parseInt(eventData.id),
                 subtasks: (taskDetails.st || taskDetails.subtasks || []).map(st => ({
-                    title: st.t || st.title || '',
-                    status: st.s || st.status || 2
+                    title: st.t || '',
+                    status: st.s || 2
                 }))
             };
             
@@ -700,84 +702,114 @@ const Event = () => {
         }
     };
 
-    const handleUpdateSubtaskStatus = (task, taskDetails, subtaskIndex, newStatus) => {
+    const updateSubtaskStatus = async (taskId, subtaskIndex, newStatus) => {
         try {
-            const updatedSubtasks = [...(taskDetails.subtasks || [])];
-            const subtask = updatedSubtasks[subtaskIndex];
-            
-            if (typeof subtask === 'string') {
-                updatedSubtasks[subtaskIndex] = {
-                    title: subtask,
-                    status: newStatus
-                };
-            } else {
-                updatedSubtasks[subtaskIndex] = {
-                    ...subtask,
-                    status: newStatus
-                };
+            // Получаем текущую задачу
+            const currentTask = event.tasks.find(t => t.id === taskId);
+            if (!currentTask) return;
+
+            // Парсим текущие данные задачи
+            let taskDetails;
+            try {
+                taskDetails = typeof currentTask.task === 'string' 
+                    ? JSON.parse(currentTask.task) 
+                    : currentTask;
+            } catch (error) {
+                console.error('Ошибка при парсинге задачи:', error);
+                return;
             }
 
-            // Формируем сокращённый объект задачи
-            const taskObject = {
-                t: taskDetails.title || taskDetails.t || '',
-                d: taskDetails.description || taskDetails.d || '',
-                dl: taskDetails.deadline || taskDetails.dl || null,
-                s: taskDetails.status || taskDetails.s || 2,
-                e: taskDetails.executor || taskDetails.e || null,
-                ev: taskDetails.event || taskDetails.ev || null,
-                st: updatedSubtasks.map(st => ({
-                    t: st.title || st.t || '',
-                    s: st.status || st.s || 2
-                }))
-            };
-
-            const taskData = {
-                task: JSON.stringify(taskObject),
-                event: taskDetails.event || taskDetails.ev || '',
-                executor: taskDetails.executor || taskDetails.e || null
-            };
-
-            axios.put(`${BASE_URL}/api/tasks/${task.id}/`, taskData, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-                    'Content-Type': 'application/json'
+            // Получаем текущие подзадачи
+            const currentSubtasks = taskDetails.st || taskDetails.subtasks || [];
+            
+            // Обновляем подзадачи, сохраняя их структуру
+            const updatedSubtasks = currentSubtasks.map((st, idx) => {
+                if (idx === subtaskIndex) {
+                    // Если подзадача - строка, преобразуем её в объект
+                    if (typeof st === 'string') {
+                        return { t: String(st), s: newStatus };
+                    }
+                    // Если подзадача - объект, обновляем только статус
+                    return {
+                        t: String(st.t || st.title || ''),
+                        s: newStatus
+                    };
                 }
-            })
-            .then(response => {
-                const updatedTaskDetails = JSON.parse(response.data.task);
-                const fullTaskDetails = {
-                    title: updatedTaskDetails.t || updatedTaskDetails.title || '',
-                    description: updatedTaskDetails.d || updatedTaskDetails.description || '',
-                    deadline: updatedTaskDetails.dl || updatedTaskDetails.deadline || null,
-                    status: updatedTaskDetails.s || updatedTaskDetails.status || 2,
-                    executor: updatedTaskDetails.e || updatedTaskDetails.executor || null,
-                    event: updatedTaskDetails.ev || updatedTaskDetails.event || null,
-                    subtasks: (updatedTaskDetails.st || updatedTaskDetails.subtasks || []).map(st => ({
-                        title: st.t || st.title || '',
-                        status: st.s || st.status || 2
-                    }))
+                // Для остальных подзадач сохраняем текущую структуру
+                if (typeof st === 'string') {
+                    return { t: String(st), s: st.s || 2 };
+                }
+                return {
+                    t: String(st.t || st.title || ''),
+                    s: st.s || st.status || 2
                 };
-
-                const updatedTask = {
-                    id: response.data.id,
-                    ...fullTaskDetails,
-                    task: response.data.task
-                };
-
-                setEvent(prevEvent => ({
-                    ...prevEvent,
-                    tasks: prevEvent.tasks.map(t => 
-                        t.id === task.id ? updatedTask : t
-                    )
-                }));
-            })
-            .catch(error => {
-                console.error('Ошибка при обновлении статуса подзадачи:', error);
-                alert('Не удалось обновить статус подзадачи. Пожалуйста, попробуйте снова.');
             });
+
+            // Формируем обновленный объект задачи
+            const updatedTaskDetails = {
+                ...taskDetails,
+                st: updatedSubtasks
+            };
+
+            // Отправляем обновление на сервер
+            const taskData = {
+                task: JSON.stringify(updatedTaskDetails),
+                event: taskDetails.ev || currentTask.event,
+                executor: taskDetails.e || currentTask.executor
+            };
+
+            const response = await axios.put(
+                `${BASE_URL}/api/tasks/${taskId}/`,
+                taskData,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            // Обновляем локальное состояние
+            setEvent(prevEvent => ({
+                ...prevEvent,
+                tasks: prevEvent.tasks.map(t => {
+                    if (t.id === taskId) {
+                        const parsedTask = JSON.parse(response.data.task);
+                        const processedSubtasks = (parsedTask.st || []).map(st => ({
+                            title: typeof st === 'string' ? String(st) : String(st.t || st.title || ''),
+                            status: typeof st === 'string' ? 2 : (st.s || st.status || 2)
+                        }));
+                        
+                        return {
+                            ...t,
+                            task: response.data.task,
+                            subtasks: processedSubtasks
+                        };
+                    }
+                    return t;
+                })
+            }));
+
+            // Обновляем состояние выбранной задачи для модального окна
+            if (selectedTaskForSubtasks && selectedTaskForSubtasks.id === taskId) {
+                setSelectedTaskForSubtasks(prev => {
+                    if (!prev) return null;
+                    const updatedSubtasks = [...prev.subtasks];
+                    updatedSubtasks[subtaskIndex] = {
+                        ...updatedSubtasks[subtaskIndex],
+                        status: newStatus
+                    };
+                    return {
+                        ...prev,
+                        subtasks: updatedSubtasks
+                    };
+                });
+            }
+
+            return response.data;
         } catch (error) {
-            console.error('Ошибка при обработке подзадачи:', error);
-            alert('Не удалось обновить статус подзадачи. Пожалуйста, попробуйте снова.');
+            console.error('Ошибка при обновлении статуса подзадачи:', error);
+            throw error;
         }
     };
 
@@ -1004,15 +1036,14 @@ const Event = () => {
                                             >
                                                 <img src={MinusIcon} alt="Удалить" className="w-5 h-5" />
                                             </button>
-                                            <div className="flex items-center bg-[#F4F4F4] hover:bg-[#E0E0E0] rounded-xl px-[12px] py-[8px] transition-colors w-full">
+                                            <Link
+                                                to={`/folder?project_id=${project.id}&event_id=${eventData.id}`}
+                                                className="flex items-center bg-[#F4F4F4] hover:bg-[#E0E0E0] rounded-xl px-[12px] py-[8px] transition-colors w-full font-gilroy_semibold text-[#0D062D] text-[20px] leading-[25px] truncate"
+                                                style={{ textDecoration: 'none' }}
+                                            >
                                                 <img src={FolderIcon} alt="Папка" className="w-5 h-5 mr-[10px]" />
-                                                <Link 
-                                                    to={`/folder?project_id=${project.id}&event_id=${eventData.id}`}
-                                                    className="font-gilroy_semibold text-[#0D062D] text-[20px] leading-[25px] truncate"
-                                                >
-                                                    {project.title}
-                                                </Link>
-                                            </div>
+                                                <span className="truncate">{project.title}</span>
+                                            </Link>
                                         </div>
                                     );
                                 })}
@@ -1097,8 +1128,8 @@ const Event = () => {
                                                 <div className="mb-2">
                                                     <ul className="list-disc list-inside mt-1">
                                                         {taskDetails.subtasks.slice(0, 3).map((subtask, subIndex) => {
-                                                            const subtaskTitle = typeof subtask === 'string' ? subtask : (subtask?.title || '');
-                                                            const subtaskStatus = typeof subtask === 'string' ? 2 : (subtask?.status || 2);
+                                                            const subtaskTitle = typeof subtask === 'string' ? subtask : (subtask?.t || subtask?.title || '');
+                                                            const subtaskStatus = typeof subtask === 'string' ? 2 : (subtask?.s || subtask?.status || 2);
                                                             return (
                                                                 <li key={`subtask-${task.id}-${subIndex}`} className="flex items-center gap-2 mb-1">
                                                                     <input
@@ -1107,39 +1138,52 @@ const Event = () => {
                                                                         checked={subtaskStatus === 3}
                                                                         onChange={(e) => {
                                                                             e.stopPropagation();
-                                                                            const newStatus = e.target.checked ? 3 : 2;
-                                                                            handleUpdateSubtaskStatus(
-                                                                                task,
-                                                                                taskDetails,
-                                                                                subIndex,
-                                                                                newStatus
-                                                                            );
+                                                                            updateSubtaskStatus(task.id, subIndex, e.target.checked ? 3 : 2);
                                                                         }}
                                                                     />
-                                                                    <span className="text-[#0D062D] text-sm">
+                                                                    <span className="text-[#0D062D] text-sm flex-1">
                                                                         {subtaskTitle}
                                                                     </span>
                                                                 </li>
                                                             );
                                                         })}
                                                         {taskDetails.subtasks.length > 3 && (
-                                                            <li className="flex items-left justify-left text-[#0D062D] text-opacity-50 text-lg">...</li>
+                                                            <li
+                                                                className="flex items-center text-[#0077EB] text-sm cursor-pointer hover:underline"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedTaskForSubtasks({
+                                                                        id: task.id,
+                                                                        title: taskDetails.title,
+                                                                        subtasks: taskDetails.subtasks
+                                                                    });
+                                                                    setSubtasksModalIsOpen(true);
+                                                                }}
+                                                            >
+                                                                Показать все подзадачи ({taskDetails.subtasks.length})
+                                                            </li>
                                                         )}
                                                     </ul>
                                                 </div>
                                             )}
                                             
-                                            <div className="flex items-end justify-between mt-2 w-full">
+                                            <div className="flex items-end justify-between mt-2 w-full gap-2">
                                                 {/* Дедлайн слева */}
                                                 {taskDetails?.deadline && (
-                                                    <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] w-[80px] h-[23px] flex items-center justify-center">
-                                                        {new Date(taskDetails.deadline).toLocaleString('ru-RU', {
-                                                            day: '2-digit',
-                                                            month: '2-digit',
-                                                            hour: '2-digit',
-                                                            minute: '2-digit',
-                                                            hour12: false
-                                                        }).replace(',', '')}
+                                                    <div className="bg-[#FFA500] text-white px-2 py-1 rounded text-[12px] min-w-[60px] flex flex-col items-center justify-center leading-tight">
+                                                        <span>
+                                                            {new Date(taskDetails.deadline).toLocaleDateString('ru-RU', {
+                                                                day: '2-digit',
+                                                                month: '2-digit'
+                                                            })}
+                                                        </span>
+                                                        <span>
+                                                            {new Date(taskDetails.deadline).toLocaleTimeString('ru-RU', {
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                                hour12: false
+                                                            })}
+                                                        </span>
                                                     </div>
                                                 )}
                                                 {/* Статус по центру */}
@@ -1175,14 +1219,14 @@ const Event = () => {
                                                 </div>
                                                 {/* Исполнитель справа */}
                                                 {taskDetails?.executor && (
-                                                    <div className="flex gap-1">
+                                                    <div className="flex flex-wrap gap-1 max-w-[200px] justify-end">
                                                         {Array.isArray(taskDetails.executor) 
                                                             ? taskDetails.executor.map(executorId => (
-                                                                <span key={executorId} className="bg-[#F4F4F4] px-2 py-1 rounded-xl font-gilroy_semibold text-[#0D062D] text-[15px]">
+                                                                <span key={executorId} className="bg-[#F4F4F4] px-2 py-1 rounded-xl font-gilroy_semibold text-[#0D062D] text-[15px] whitespace-nowrap mb-1">
                                                                     {formatUserName(orgs[executorId])}
                                                                 </span>
                                                             ))
-                                                            : <span className="bg-[#F4F4F4] px-2 py-1 rounded-xl font-gilroy_semibold text-[#0D062D] text-[15px]">
+                                                            : <span className="bg-[#F4F4F4] px-2 py-1 rounded-xl font-gilroy_semibold text-[#0D062D] text-[15px] whitespace-nowrap mb-1">
                                                                 {formatUserName(orgs[taskDetails.executor])}
                                                               </span>
                                                         }
@@ -1608,6 +1652,59 @@ const Event = () => {
                         <button
                             className="bg-[#F1F4F9] text-[#0D062D] px-6 py-2 rounded-xl hover:bg-[#E0E0E0] transition-colors"
                             onClick={() => setDescriptionModalIsOpen(false)}
+                        >
+                            Закрыть
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Модальное окно для подзадач */}
+            <Modal
+                isOpen={subtasksModalIsOpen}
+                onRequestClose={() => setSubtasksModalIsOpen(false)}
+                style={{
+                    content: {
+                        top: '50%',
+                        left: '50%',
+                        right: 'auto',
+                        bottom: 'auto',
+                        marginRight: '-50%',
+                        transform: 'translate(-50%, -50%)',
+                        backgroundColor: '#FFFFFF',
+                        width: '500px',
+                        height: 'auto',
+                        borderRadius: '24px',
+                        padding: '24px',
+                        border: 'none',
+                        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)'
+                    }
+                }}
+            >
+                <div className="flex flex-col gap-4">
+                    <h2 className="font-gilroy_bold text-[#0D062D] text-[24px] leading-[30px] mb-2">Подзадачи: {selectedTaskForSubtasks?.title || ''}</h2>
+                    <div className="flex flex-col gap-3">
+                        {selectedTaskForSubtasks?.subtasks.map((subtask, index) => (
+                            <div key={index} className="flex items-center gap-2 bg-[#F1F4F9] rounded-lg px-4 py-3">
+                                <input
+                                    type="checkbox"
+                                    className="w-5 h-5 accent-[#0077EB] rounded border-[#0D062D]"
+                                    checked={subtask.status === 3}
+                                    onChange={(e) => {
+                                        e.stopPropagation();
+                                        updateSubtaskStatus(selectedTaskForSubtasks.id, index, e.target.checked ? 3 : 2);
+                                    }}
+                                />
+                                <span className="font-gilroy_semibold text-[#0D062D] text-[16px] leading-[19px]">
+                                    {subtask.title}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex justify-end mt-4">
+                        <button
+                            className="bg-[#F1F4F9] text-[#0D062D] px-6 py-2 rounded-xl hover:bg-[#E0E0E0] transition-colors font-gilroy_semibold text-[16px]"
+                            onClick={() => setSubtasksModalIsOpen(false)}
                         >
                             Закрыть
                         </button>
