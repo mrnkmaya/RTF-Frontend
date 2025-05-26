@@ -94,6 +94,7 @@ const Event = () => {
         subtasks: []
     });
     const [subtaskInput, setSubtaskInput] = useState('');
+    const [descriptionModalIsOpen, setDescriptionModalIsOpen] = useState(false);
 
     useEffect(() => {
         // Проверяем наличие ID события
@@ -901,7 +902,13 @@ const Event = () => {
                         ? <input className="mb-6 bg-[#F1F1F1] h-[40px] rounded pl-[10px] w-full" 
                             type="textarea" value={`${event.description}`} 
                             onChange={(e) => {setEvent({...event, description: e.target.value })}}/>
-                        : <p className="font-gilroy_bold text-[24px] text-[#0D062D] leading-[30px] mb-[12px] line-clamp-3 overflow-hidden max-w-[395px]" style={{display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', wordBreak: 'break-word'}}>{event.description}</p>
+                        : <p 
+                            className="font-gilroy_bold text-[24px] text-[#0D062D] leading-[30px] mb-[12px] line-clamp-3 overflow-hidden max-w-[395px] cursor-pointer hover:text-[#0077EB] transition-colors" 
+                            style={{display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', wordBreak: 'break-word'}}
+                            onClick={() => setDescriptionModalIsOpen(true)}
+                          >
+                            {event.description}
+                          </p>
                         }
                         <p className={`${textStyleSemibold} text-[16px] leading-[20px] text-opacity-50`}>Ответственные</p>
                         {isEditing
@@ -1563,6 +1570,46 @@ const Event = () => {
                             onClick={createFolder}
                         >
                             Создать папку
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Модальное окно для полного описания */}
+            <Modal
+                isOpen={descriptionModalIsOpen}
+                onRequestClose={() => setDescriptionModalIsOpen(false)}
+                style={{
+                    content: {
+                        top: '50%',
+                        left: '50%',
+                        right: 'auto',
+                        bottom: 'auto',
+                        marginRight: '-50%',
+                        transform: 'translate(-50%, -50%)',
+                        backgroundColor: '#FFFFFF',
+                        width: '500px',
+                        height: 'auto',
+                        borderRadius: '24px',
+                        padding: '24px',
+                        border: 'none',
+                        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)'
+                    }
+                }}
+            >
+                <div className="flex flex-col gap-4">
+                    <h2 className="font-gilroy_bold text-[#0D062D] text-[24px] leading-[30px]">Описание мероприятия</h2>
+                    <div className="w-full">
+                        <p className="font-gilroy_regular text-[#0D062D] text-[18px] leading-[24px] break-words whitespace-pre-wrap">
+                            {event.description}
+                        </p>
+                    </div>
+                    <div className="flex justify-end mt-4">
+                        <button
+                            className="bg-[#F1F4F9] text-[#0D062D] px-6 py-2 rounded-xl hover:bg-[#E0E0E0] transition-colors"
+                            onClick={() => setDescriptionModalIsOpen(false)}
+                        >
+                            Закрыть
                         </button>
                     </div>
                 </div>
