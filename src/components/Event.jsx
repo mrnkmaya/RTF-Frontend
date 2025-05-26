@@ -71,6 +71,7 @@ const Event = () => {
     const location = useLocation();
     const eventData = Object.fromEntries(new URLSearchParams(location.search));
     const navigate = useNavigate();
+    const isFromArchive = location.state?.fromArchive || false;
 
     const [titleError, setTitleError] = useState(false);
     const [event, setEvent] = useState([]);
@@ -84,6 +85,7 @@ const Event = () => {
     const [createFolderModalIsOpen, setCreateFolderModalIsOpen] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
     const [selectedTask, setSelectedTask] = useState(null);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [newTask, setNewTask] = useState({
         title: '',
         description: '',
@@ -95,6 +97,8 @@ const Event = () => {
     });
     const [subtaskInput, setSubtaskInput] = useState('');
     const [descriptionModalIsOpen, setDescriptionModalIsOpen] = useState(false);
+    const [subtasksModalIsOpen, setSubtasksModalIsOpen] = useState(false);
+    const [selectedTaskForSubtasks, setSelectedTaskForSubtasks] = useState(null);
 
     useEffect(() => {
         // Проверяем наличие ID события
@@ -747,7 +751,7 @@ const Event = () => {
                 }
                 // Для остальных подзадач сохраняем текущую структуру
                 if (typeof st === 'string') {
-                    return { t: st, s: 2 };
+                    return { t: st, s: st.s || 2 };
                 }
                 return st;
             });
@@ -796,6 +800,22 @@ const Event = () => {
                     return t;
                 })
             }));
+
+            // Обновляем состояние выбранной задачи для модального окна
+            if (selectedTaskForSubtasks && selectedTaskForSubtasks.id === taskId) {
+                setSelectedTaskForSubtasks(prev => {
+                    if (!prev) return null;
+                    const updatedSubtasks = [...prev.subtasks];
+                    updatedSubtasks[subtaskIndex] = {
+                        ...updatedSubtasks[subtaskIndex],
+                        status: newStatus
+                    };
+                    return {
+                        ...prev,
+                        subtasks: updatedSubtasks
+                    };
+                });
+            }
 
             return response.data;
         } catch (error) {
@@ -862,7 +882,7 @@ const Event = () => {
             <div className="bg-[#FFFFFF] rounded-3xl p-6 h-auto overflow-y-auto overflow-x-hidden">
                 <div className="flex items-center mb-[24px] flex-wrap gap-3">
                     <button 
-                        onClick={() => navigate('/events')}
+                        onClick={() => navigate(isFromArchive ? '/archive' : '/events')}
                         className="mr-4 text-[#0D062D] hover:text-[#0077EB] transition-colors"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -882,26 +902,76 @@ const Event = () => {
                              'В процессе'}
                         </p>
                     </div>
-                    {event.is_cancelled ? (
-                        <button className={`${buttonStyle} w-[170px] h-[48px] bg-[#FF4B4B]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(false, false)}}>Вернуть</button>
-                    ) : event.is_past ? (
-                        <button className={`${buttonStyle} w-[170px] h-[48px]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(false, false)}}>Вернуть</button>
-                    ) : (
-                        <>
-                            <button className={`${buttonStyle} w-[170px] h-[48px]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(true, false)}}>Завершить</button>
-                            <button className={`${buttonStyle} w-[170px] h-[48px] bg-[#FF4B4B]`} onClick={(evt) => {evt.preventDefault(); handleChangeStatus(true, true)}}>Отменить</button>
-                        </>
-                    )}
-                    <button className={`${buttonStyle} w-[170px] h-[48px]`} onClick={(evt) => {handleDelete(evt)}}>Удалить</button>
-                    <button className={`${buttonStyle} w-[170px] h-[48px]`} onClick={
-                        (evt) => {
-                            evt.preventDefault();
-                            if (isEditing) {
-                                updateEvent(event);
-                            }
-                            setIsEditing(!isEditing);
-                        }
-                    }>{isEditing ? 'Подтвердить' : 'Редактировать'}</button>
+                    <div className="relative">
+                        <button 
+                            className={`${buttonStyle} w-[170px] h-[48px]`} 
+                            onClick={() => {
+                                if (isEditing) {
+                                    updateEvent(event);
+                                    setIsEditing(false);
+                                } else {
+                                    setIsDropdownOpen(!isDropdownOpen);
+                                }
+                            }}
+                        >
+                            {isEditing ? 'Подтвердить' : 'Редактировать'}
+                        </button>
+                        {isDropdownOpen && !isEditing && (
+                            <div className="absolute right-0 mt-2 w-[170px] bg-white rounded-xl shadow-lg z-50">
+                                <button 
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 rounded-t-xl"
+                                    onClick={() => {
+                                        setIsEditing(true);
+                                        setIsDropdownOpen(false);
+                                    }}
+                                >
+                                    Изменить
+                                </button>
+                                {!event.is_cancelled && !event.is_past && (
+                                    <>
+                                        <button 
+                                            className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                                            onClick={() => {
+                                                handleChangeStatus(true, false);
+                                                setIsDropdownOpen(false);
+                                            }}
+                                        >
+                                            Завершить
+                                        </button>
+                                        <button 
+                                            className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                                            onClick={() => {
+                                                handleChangeStatus(true, true);
+                                                setIsDropdownOpen(false);
+                                            }}
+                                        >
+                                            Отменить
+                                        </button>
+                                    </>
+                                )}
+                                {(event.is_cancelled || event.is_past) && (
+                                    <button 
+                                        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                                        onClick={() => {
+                                            handleChangeStatus(false, false);
+                                            setIsDropdownOpen(false);
+                                        }}
+                                    >
+                                        Вернуть
+                                    </button>
+                                )}
+                                <button 
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 rounded-b-xl text-[#FF4B4B]"
+                                    onClick={() => {
+                                        handleDelete();
+                                        setIsDropdownOpen(false);
+                                    }}
+                                >
+                                    Удалить
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <div className="flex justify-between gap-10 h-[calc(100vh-180px)]">
                     {/* Левая колонка с информацией о мероприятии */}
@@ -1120,8 +1190,12 @@ const Event = () => {
                                                 <div className="mb-2">
                                                     <ul className="list-disc list-inside mt-1">
                                                         {taskDetails.subtasks.slice(0, 3).map((subtask, subIndex) => {
-                                                            const subtaskTitle = typeof subtask === 'string' ? subtask : (subtask?.title || '');
-                                                            const subtaskStatus = typeof subtask === 'string' ? 2 : (subtask?.status || 2);
+                                                            const subtaskTitle = typeof subtask === 'string' 
+                                                                ? subtask 
+                                                                : (subtask?.t || subtask?.title || '');
+                                                            const subtaskStatus = typeof subtask === 'string' 
+                                                                ? 2 
+                                                                : (subtask?.s || subtask?.status || 2);
                                                             return (
                                                                 <li key={`subtask-${task.id}-${subIndex}`} className="flex items-center gap-2 mb-1">
                                                                     <input
@@ -1134,14 +1208,27 @@ const Event = () => {
                                                                             updateSubtaskStatus(task.id, subIndex, newStatus);
                                                                         }}
                                                                     />
-                                                                    <span className="text-[#0D062D] text-sm">
+                                                                    <span className="text-[#0D062D] text-sm flex-1">
                                                                         {subtaskTitle}
                                                                     </span>
                                                                 </li>
                                                             );
                                                         })}
                                                         {taskDetails.subtasks.length > 3 && (
-                                                            <li className="flex items-left justify-left text-[#0D062D] text-opacity-50 text-lg">...</li>
+                                                            <li 
+                                                                className="flex items-center text-[#0077EB] text-sm cursor-pointer hover:underline"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedTaskForSubtasks({
+                                                                        id: task.id,
+                                                                        title: taskDetails.title,
+                                                                        subtasks: taskDetails.subtasks
+                                                                    });
+                                                                    setSubtasksModalIsOpen(true);
+                                                                }}
+                                                            >
+                                                                Показать все подзадачи ({taskDetails.subtasks.length})
+                                                            </li>
                                                         )}
                                                     </ul>
                                                 </div>
@@ -1626,6 +1713,78 @@ const Event = () => {
                         <button
                             className="bg-[#F1F4F9] text-[#0D062D] px-6 py-2 rounded-xl hover:bg-[#E0E0E0] transition-colors"
                             onClick={() => setDescriptionModalIsOpen(false)}
+                        >
+                            Закрыть
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Модальное окно для подзадач */}
+            <Modal
+                isOpen={subtasksModalIsOpen}
+                onRequestClose={() => {
+                    setSubtasksModalIsOpen(false);
+                    setSelectedTaskForSubtasks(null);
+                }}
+                style={{
+                    content: {
+                        top: '50%',
+                        left: '50%',
+                        right: 'auto',
+                        bottom: 'auto',
+                        marginRight: '-50%',
+                        transform: 'translate(-50%, -50%)',
+                        backgroundColor: '#FFFFFF',
+                        width: '500px',
+                        height: 'auto',
+                        maxHeight: '80vh',
+                        borderRadius: '24px',
+                        padding: '24px',
+                        border: 'none',
+                        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)'
+                    }
+                }}
+            >
+                <div className="flex flex-col gap-4">
+                    <h2 className="font-gilroy_bold text-[#0D062D] text-[24px] leading-[30px]">
+                        Подзадачи: {selectedTaskForSubtasks?.title || ''}
+                    </h2>
+                    <div className="w-full max-h-[400px] overflow-y-auto">
+                        <ul className="flex flex-col gap-2">
+                            {selectedTaskForSubtasks?.subtasks?.map((subtask, index) => {
+                                const subtaskTitle = typeof subtask === 'string' 
+                                    ? subtask 
+                                    : (subtask?.t || subtask?.title || '');
+                                const subtaskStatus = typeof subtask === 'string' 
+                                    ? 2 
+                                    : (subtask?.s || subtask?.status || 2);
+                                return (
+                                    <li key={`modal-subtask-${index}`} className="flex items-center gap-2 p-2 bg-[#F1F4F9] rounded-lg">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 rounded border-[#0D062D]"
+                                            checked={subtaskStatus === 3}
+                                            onChange={(e) => {
+                                                const newStatus = e.target.checked ? 3 : 2;
+                                                updateSubtaskStatus(selectedTaskForSubtasks.id, index, newStatus);
+                                            }}
+                                        />
+                                        <span className="text-[#0D062D] text-sm flex-1">
+                                            {subtaskTitle}
+                                        </span>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                    <div className="flex justify-end mt-4">
+                        <button
+                            className="bg-[#F1F4F9] text-[#0D062D] px-6 py-2 rounded-xl hover:bg-[#E0E0E0] transition-colors"
+                            onClick={() => {
+                                setSubtasksModalIsOpen(false);
+                                setSelectedTaskForSubtasks(null);
+                            }}
                         >
                             Закрыть
                         </button>

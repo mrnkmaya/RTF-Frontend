@@ -37,6 +37,8 @@ const Profile = () => {
     });
     const [logoutModalOpen, setLogoutModalOpen] = useState(false);
     const accessLevel = localStorage.getItem('access_level');
+    const [subtasksModalIsOpen, setSubtasksModalIsOpen] = useState(false);
+    const [selectedTaskForSubtasks, setSelectedTaskForSubtasks] = useState(null);
 
     const updateSubtaskStatus = async (taskId, subtaskIndex, newStatus) => {
         try {
@@ -104,22 +106,40 @@ const Profile = () => {
             );
 
             // Обновляем локальное состояние
-            setTasks(prevTasks => prevTasks.map(t => {
-                if (t.id === taskId) {
-                    const parsedTask = JSON.parse(response.data.task);
-                    const processedSubtasks = (parsedTask.st || []).map(st => ({
-                        title: typeof st === 'string' ? st : (st.t || st.title || ''),
-                        status: typeof st === 'string' ? 2 : (st.s || st.status || 2)
-                    }));
-                    
-                    return {
-                        ...t,
-                        task: response.data.task,
-                        subtasks: processedSubtasks
+            setTasks(prevTasks => 
+                prevTasks.map(t => {
+                    if (t.id === taskId) {
+                        const parsedTask = JSON.parse(response.data.task);
+                        const processedSubtasks = (parsedTask.st || []).map(st => ({
+                            title: typeof st === 'string' ? st : (st.t || st.title || ''),
+                            status: typeof st === 'string' ? 2 : (st.s || st.status || 2)
+                        }));
+                        
+                        return {
+                            ...t,
+                            task: response.data.task,
+                            subtasks: processedSubtasks
+                        };
+                    }
+                    return t;
+                })
+            );
+
+            // Обновляем состояние выбранной задачи для модального окна
+            if (selectedTaskForSubtasks && selectedTaskForSubtasks.id === taskId) {
+                setSelectedTaskForSubtasks(prev => {
+                    if (!prev) return null;
+                    const updatedSubtasks = [...prev.subtasks];
+                    updatedSubtasks[subtaskIndex] = {
+                        ...updatedSubtasks[subtaskIndex],
+                        status: newStatus
                     };
-                }
-                return t;
-            }));
+                    return {
+                        ...prev,
+                        subtasks: updatedSubtasks
+                    };
+                });
+            }
 
             return response.data;
         } catch (error) {
@@ -148,18 +168,33 @@ const Profile = () => {
     }, [currentUserAccessLevel, isOwnProfile, navigate]);
 
     const canEdit = () => {
-        return isOwnProfile || currentUserAccessLevel >= 2; //&&??
+        // 3 уровень может редактировать всё
+        if (currentUserAccessLevel === 3) return true;
+        // 1 и 2 уровень могут редактировать только свой профиль
+        return isOwnProfile;
     };
 
     const getEditableFields = () => {
+        // Для 3 уровня все поля редактируемы
+        if (currentUserAccessLevel === 3) {
+            return {
+                commission: true,
+                status: true,
+                date_of_birth: true,
+                number_phone: true,
+                email: true,
+                adress: true
+            };
+        }
         
+        // Для 1 и 2 уровня только свои данные, кроме должности и комиссии
         return {
-            commission: true, // Все могут менять комиссию
-            date_of_birth: isOwnProfile, // Только свои данные
+            commission: false,
+            status: false,
+            date_of_birth: isOwnProfile,
             number_phone: isOwnProfile,
             email: isOwnProfile,
-            adress: isOwnProfile,
-            status: true // Все могут менять должность
+            adress: isOwnProfile
         };
     };
 
@@ -291,7 +326,7 @@ const Profile = () => {
             
             const payload = {
                 status: profileData.status || null,
-                commission: profileData.commission || null,
+                commission: profileData.commission === '' ? '' : profileData.commission || null,
                 ...(isOwnProfile && {
                     date_of_birth: profileData.date_of_birth || null,
                     number_phone: profileData.number_phone || null,
@@ -908,29 +943,45 @@ const Profile = () => {
                                         
                                             {task.subtasks && task.subtasks.length > 0 && (
                                                 <div className="mb-2">
-                                                    {task.subtasks.slice(0, 3).map((subtask, index) => (
-                                                        <div key={index} className="flex items-center gap-2 mb-1">
-                                                            <input
-                                                                type="checkbox"
-                                                                className="w-4 h-4 rounded border-[#0D062D]"
-                                                                checked={subtask.status === 3}
-                                                                onChange={async (e) => {
-                                                                    try {
-                                                                        const newStatus = e.target.checked ? 3 : 2;
-                                                                        await updateSubtaskStatus(task.id, index, newStatus);
-                                                                    } catch (error) {
-                                                                        console.error('Ошибка при обновлении статуса подзадачи:', error);
-                                                                    }
+                                                    <ul className="list-disc list-inside mt-1">
+                                                        {task.subtasks.slice(0, 3).map((subtask, subIndex) => {
+                                                            const subtaskTitle = typeof subtask === 'string' ? subtask : (subtask?.title || '');
+                                                            const subtaskStatus = typeof subtask === 'string' ? 2 : (subtask?.status || subtask?.s || 2);
+                                                            return (
+                                                                <li key={`subtask-${task.id}-${subIndex}`} className="flex items-center gap-2 mb-1">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="w-4 h-4 rounded border-[#0D062D]"
+                                                                        checked={subtaskStatus === 3}
+                                                                        onChange={(e) => {
+                                                                            e.stopPropagation();
+                                                                            const newStatus = e.target.checked ? 3 : 2;
+                                                                            updateSubtaskStatus(task.id, subIndex, newStatus);
+                                                                        }}
+                                                                    />
+                                                                    <span className="text-[#0D062D] text-sm">
+                                                                        {subtaskTitle}
+                                                                    </span>
+                                                                </li>
+                                                            );
+                                                        })}
+                                                        {task.subtasks.length > 3 && (
+                                                            <li 
+                                                                className="flex items-center text-[#0077EB] text-sm cursor-pointer hover:underline"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedTaskForSubtasks({
+                                                                        id: task.id,
+                                                                        title: task.title,
+                                                                        subtasks: task.subtasks
+                                                                    });
+                                                                    setSubtasksModalIsOpen(true);
                                                                 }}
-                                                            />
-                                                            <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%] mb-1">
-                                                                {subtask.title}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                    {task.subtasks.length > 3 && (
-                                                        <div className="flex items-left justify-left text-[#0D062D] text-opacity-50 text-lg">...</div>
-                                                    )}
+                                                            >
+                                                                Показать все подзадачи ({task.subtasks.length})
+                                                            </li>
+                                                        )}
+                                                    </ul>
                                                 </div>
                                             )}
                                             <div className="flex justify-between items-center mt-2">
@@ -988,29 +1039,45 @@ const Profile = () => {
                                             </div>
                                         {task.subtasks && task.subtasks.length > 0 && (
                                             <div className="mb-2">
-                                                {task.subtasks.slice(0, 3).map((subtask, index) => (
-                                                    <div key={index} className="flex items-center gap-2 mb-1">
-                                                        <input
-                                                            type="checkbox"
-                                                            className="w-4 h-4 rounded border-[#0D062D]"
-                                                            checked={subtask.status === 3}
-                                                            onChange={async (e) => {
-                                                                try {
-                                                                    const newStatus = e.target.checked ? 3 : 2;
-                                                                    await updateSubtaskStatus(task.id, index, newStatus);
-                                                                } catch (error) {
-                                                                    console.error('Ошибка при обновлении статуса подзадачи:', error);
-                                                                }
+                                                <ul className="list-disc list-inside mt-1">
+                                                    {task.subtasks.slice(0, 3).map((subtask, subIndex) => {
+                                                        const subtaskTitle = typeof subtask === 'string' ? subtask : (subtask?.title || '');
+                                                        const subtaskStatus = typeof subtask === 'string' ? 2 : (subtask?.status || subtask?.s || 2);
+                                                        return (
+                                                            <li key={`subtask-${task.id}-${subIndex}`} className="flex items-center gap-2 mb-1">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="w-4 h-4 rounded border-[#0D062D]"
+                                                                    checked={subtaskStatus === 3}
+                                                                    onChange={(e) => {
+                                                                        e.stopPropagation();
+                                                                        const newStatus = e.target.checked ? 3 : 2;
+                                                                        updateSubtaskStatus(task.id, subIndex, newStatus);
+                                                                    }}
+                                                                />
+                                                                <span className="text-[#0D062D] text-sm">
+                                                                    {subtaskTitle}
+                                                                </span>
+                                                            </li>
+                                                        );
+                                                    })}
+                                                    {task.subtasks.length > 3 && (
+                                                        <li 
+                                                            className="flex items-center text-[#0077EB] text-sm cursor-pointer hover:underline"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedTaskForSubtasks({
+                                                                    id: task.id,
+                                                                    title: task.title,
+                                                                    subtasks: task.subtasks
+                                                                });
+                                                                setSubtasksModalIsOpen(true);
                                                             }}
-                                                        />
-                                                        <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%] mb-1">
-                                                            {subtask.title}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                                {task.subtasks.length > 3 && (
-                                                    <div className="flex items-left justify-left text-[#0D062D] text-opacity-50 text-lg">...</div>
-                                                )}
+                                                        >
+                                                            Показать все подзадачи ({task.subtasks.length})
+                                                        </li>
+                                                    )}
+                                                </ul>
                                             </div>
                                         )}
                                         <div className="flex justify-between items-center mt-2">
@@ -1063,29 +1130,45 @@ const Profile = () => {
                                             </div>
                                         {task.subtasks && task.subtasks.length > 0 && (
                                             <div className="mb-2">
-                                                {task.subtasks.slice(0, 3).map((subtask, index) => (
-                                                    <div key={index} className="flex items-center gap-2 mb-1">
-                                                        <input
-                                                            type="checkbox"
-                                                            className="w-4 h-4 rounded border-[#0D062D]"
-                                                            checked={subtask.status === 3}
-                                                            onChange={async (e) => {
-                                                                try {
-                                                                    const newStatus = e.target.checked ? 3 : 2;
-                                                                    await updateSubtaskStatus(task.id, index, newStatus);
-                                                                } catch (error) {
-                                                                    console.error('Ошибка при обновлении статуса подзадачи:', error);
-                                                                }
+                                                <ul className="list-disc list-inside mt-1">
+                                                    {task.subtasks.slice(0, 3).map((subtask, subIndex) => {
+                                                        const subtaskTitle = typeof subtask === 'string' ? subtask : (subtask?.title || '');
+                                                        const subtaskStatus = typeof subtask === 'string' ? 2 : (subtask?.status || subtask?.s || 2);
+                                                        return (
+                                                            <li key={`subtask-${task.id}-${subIndex}`} className="flex items-center gap-2 mb-1">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="w-4 h-4 rounded border-[#0D062D]"
+                                                                    checked={subtaskStatus === 3}
+                                                                    onChange={(e) => {
+                                                                        e.stopPropagation();
+                                                                        const newStatus = e.target.checked ? 3 : 2;
+                                                                        updateSubtaskStatus(task.id, subIndex, newStatus);
+                                                                    }}
+                                                                />
+                                                                <span className="text-[#0D062D] text-sm">
+                                                                    {subtaskTitle}
+                                                                </span>
+                                                            </li>
+                                                        );
+                                                    })}
+                                                    {task.subtasks.length > 3 && (
+                                                        <li 
+                                                            className="flex items-center text-[#0077EB] text-sm cursor-pointer hover:underline"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedTaskForSubtasks({
+                                                                    id: task.id,
+                                                                    title: task.title,
+                                                                    subtasks: task.subtasks
+                                                                });
+                                                                setSubtasksModalIsOpen(true);
                                                             }}
-                                                        />
-                                                        <span className="font-gilroy_semibold text-[#0D062D] text-[12px] leading-[100%] mb-1">
-                                                            {subtask.title}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                                {task.subtasks.length > 3 && (
-                                                    <div className="flex items-left justify-left text-[#0D062D] text-opacity-50 text-lg">...</div>
-                                                )}
+                                                        >
+                                                            Показать все подзадачи ({task.subtasks.length})
+                                                        </li>
+                                                    )}
+                                                </ul>
                                             </div>
                                         )}
                                         <div className="flex justify-between items-center mt-2">
@@ -1254,6 +1337,74 @@ const Profile = () => {
                     >
                         Выйти
                     </button>
+                </div>
+            </Modal>
+
+            {/* Модальное окно для подзадач */}
+            <Modal
+                isOpen={subtasksModalIsOpen}
+                onRequestClose={() => {
+                    setSubtasksModalIsOpen(false);
+                    setSelectedTaskForSubtasks(null);
+                }}
+                style={{
+                    content: {
+                        top: '50%',
+                        left: '50%',
+                        right: 'auto',
+                        bottom: 'auto',
+                        marginRight: '-50%',
+                        transform: 'translate(-50%, -50%)',
+                        backgroundColor: '#FFFFFF',
+                        width: '500px',
+                        height: 'auto',
+                        maxHeight: '80vh',
+                        borderRadius: '24px',
+                        padding: '24px',
+                        border: 'none',
+                        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)'
+                    }
+                }}
+            >
+                <div className="flex flex-col gap-4">
+                    <h2 className="font-gilroy_bold text-[#0D062D] text-[24px] leading-[30px]">
+                        Подзадачи: {selectedTaskForSubtasks?.title || ''}
+                    </h2>
+                    <div className="w-full max-h-[400px] overflow-y-auto">
+                        <ul className="flex flex-col gap-2">
+                            {selectedTaskForSubtasks?.subtasks?.map((subtask, index) => {
+                                const subtaskTitle = typeof subtask === 'string' ? subtask : (subtask?.title || '');
+                                const subtaskStatus = typeof subtask === 'string' ? 2 : (subtask?.status || subtask?.s || 2);
+                                return (
+                                    <li key={`modal-subtask-${index}`} className="flex items-center gap-2 p-2 bg-[#F1F4F9] rounded-lg">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 rounded border-[#0D062D]"
+                                            checked={subtaskStatus === 3}
+                                            onChange={(e) => {
+                                                const newStatus = e.target.checked ? 3 : 2;
+                                                updateSubtaskStatus(selectedTaskForSubtasks.id, index, newStatus);
+                                            }}
+                                        />
+                                        <span className="text-[#0D062D] text-sm flex-1">
+                                            {subtaskTitle}
+                                        </span>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                    <div className="flex justify-end mt-4">
+                        <button
+                            className="bg-[#F1F4F9] text-[#0D062D] px-6 py-2 rounded-xl hover:bg-[#E0E0E0] transition-colors"
+                            onClick={() => {
+                                setSubtasksModalIsOpen(false);
+                                setSelectedTaskForSubtasks(null);
+                            }}
+                        >
+                            Закрыть
+                        </button>
+                    </div>
                 </div>
             </Modal>
         </div>

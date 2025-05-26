@@ -304,7 +304,11 @@ const Events = () => {
                 <div className="flex justify-start flex-wrap">
                     {filteredEvents.map((event) => {
                         if (!event.is_past) {
-                        return <Link to={`/event?id=${event.id}`} key={event.id} >
+                        return <Link 
+                            to={`/event?id=${event.id}`} 
+                            state={{ fromArchive: false }}
+                            key={event.id}
+                        >
                             <div className={`${EVENT_PLACEHOLDER_STYLE} flex flex-col`}>
                                 <h3 className={`${textStyleSemibold} text-[32px] leading-[43px] mb-3 text-[#0D062D] truncate`}>{event.title}</h3>
                                 <p className={`${textStyleRegular} text-[20px] leading-[24px] mb-[51px] text-[#0D062D] truncate`}>{event.description}</p>
