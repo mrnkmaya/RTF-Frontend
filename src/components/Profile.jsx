@@ -381,24 +381,22 @@ const Profile = () => {
                     description: taskDetails.d || '',
                     deadline: taskDetails.dl || '',
                     status: taskDetails.s || 2,
-                    executor: taskDetails.e || '',
+                    executor: taskDetails.e || [],
                     event: taskDetails.ev || '',
-                    subtasks: (taskDetails.st || []).map(st => ({
-                        title: st.t || '',
-                        status: st.s || 2
+                    subtasks: (taskDetails.st || taskDetails.subtasks || []).map(st => ({
+                        title: st.t || st.title || '',
+                        status: st.s || st.status || 2
+                    }))
+                };
+            } else {
+                taskDetails = {
+                    ...taskDetails,
+                    subtasks: (taskDetails.st || taskDetails.subtasks || []).map(st => ({
+                        title: st.t || st.title || '',
+                        status: st.s || st.status || 2
                     }))
                 };
             }
-            // Разбиваем дедлайн на дату и время
-            let deadline = '';
-            let deadlineTime = '';
-            if (taskDetails.deadline && taskDetails.deadline.includes('T')) {
-                [deadline, deadlineTime] = taskDetails.deadline.split('T');
-            } else {
-                deadline = taskDetails.deadline || '';
-                deadlineTime = '';
-            }
-            
             // Преобразуем исполнителей в массив
             const executors = Array.isArray(taskDetails.executor) 
                 ? taskDetails.executor 
@@ -408,10 +406,10 @@ const Profile = () => {
             setNewTask({
                 title: taskDetails?.title || '',
                 description: taskDetails?.description || '',
-                deadline,
-                deadlineTime,
+                deadline: taskDetails?.deadline || '',
+                deadlineTime: '',
                 status: taskDetails?.status || 2,
-                assignees: executors.map(e => e.toString()), // Преобразуем в массив строк
+                assignees: executors.map(e => e.toString()),
                 subtasks: taskDetails?.subtasks || []
             });
             setEditTaskModalIsOpen(true);
@@ -439,7 +437,7 @@ const Profile = () => {
                 d: newTask.description?.trim() || '',
                 dl: deadlineString,
                 s: newTask.status || 2,
-                e: newTask.assignees, // Теперь передаем массив исполнителей
+                e: newTask.assignees,
                 ev: selectedTask.event || '',
                 st: newTask.subtasks.map(subtask => ({
                     t: (subtask.title || '').trim(),
@@ -450,7 +448,7 @@ const Profile = () => {
             const taskData = {
                 task: taskJson,
                 event: selectedTask.event,
-                executor: newTask.assignees // Передаем массив исполнителей
+                executor: newTask.assignees
             };
             axios.put(`${BASE_URL}/api/tasks/${selectedTask.id}/`, taskData, {
                 headers: {
