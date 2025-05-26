@@ -134,15 +134,26 @@ const Event = () => {
                             const taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
                             console.log('Распарсенные детали задачи:', taskDetails);
                             
+                            // Обрабатываем подзадачи
+                            const subtasks = (taskDetails.st || taskDetails.subtasks || []).map(st => {
+                                if (typeof st === 'string') {
+                                    return { title: st, status: 2 };
+                                }
+                                return {
+                                    title: st.t || st.title || '',
+                                    status: st.s || st.status || 2
+                                };
+                            });
+                            
                             return {
                                 id: task.id,
-                                title: taskDetails?.title || 'Без названия',
-                                description: taskDetails?.description || '',
-                                deadline: taskDetails?.deadline || null,
-                                status: taskDetails?.status || 2,
-                                user: taskDetails?.user || null,
-                                assignee: taskDetails?.user || null,
-                                subtasks: taskDetails?.subtasks || [],
+                                title: taskDetails?.t || taskDetails?.title || 'Без названия',
+                                description: taskDetails?.d || taskDetails?.description || '',
+                                deadline: taskDetails?.dl || taskDetails?.deadline || null,
+                                status: taskDetails?.s || taskDetails?.status || 2,
+                                user: taskDetails?.e || taskDetails?.user || null,
+                                assignee: taskDetails?.e || taskDetails?.user || null,
+                                subtasks: subtasks,
                                 task: task.task // сохраняем оригинальную строку JSON
                             };
                         } catch (error) {
@@ -700,84 +711,96 @@ const Event = () => {
         }
     };
 
-    const handleUpdateSubtaskStatus = (task, taskDetails, subtaskIndex, newStatus) => {
+    const updateSubtaskStatus = async (taskId, subtaskIndex, newStatus) => {
         try {
-            const updatedSubtasks = [...(taskDetails.subtasks || [])];
-            const subtask = updatedSubtasks[subtaskIndex];
-            
-            if (typeof subtask === 'string') {
-                updatedSubtasks[subtaskIndex] = {
-                    title: subtask,
-                    status: newStatus
-                };
-            } else {
-                updatedSubtasks[subtaskIndex] = {
-                    ...subtask,
-                    status: newStatus
-                };
+            // Получаем текущую задачу
+            const currentTask = event.tasks.find(t => t.id === taskId);
+            if (!currentTask) return;
+
+            // Парсим текущие данные задачи
+            let taskDetails;
+            try {
+                taskDetails = typeof currentTask.task === 'string' 
+                    ? JSON.parse(currentTask.task) 
+                    : currentTask;
+            } catch (error) {
+                console.error('Ошибка при парсинге задачи:', error);
+                return;
             }
 
-            // Формируем сокращённый объект задачи
-            const taskObject = {
-                t: taskDetails.title || taskDetails.t || '',
-                d: taskDetails.description || taskDetails.d || '',
-                dl: taskDetails.deadline || taskDetails.dl || null,
-                s: taskDetails.status || taskDetails.s || 2,
-                e: taskDetails.executor || taskDetails.e || null,
-                ev: taskDetails.event || taskDetails.ev || null,
-                st: updatedSubtasks.map(st => ({
-                    t: st.title || st.t || '',
-                    s: st.status || st.s || 2
-                }))
-            };
-
-            const taskData = {
-                task: JSON.stringify(taskObject),
-                event: taskDetails.event || taskDetails.ev || '',
-                executor: taskDetails.executor || taskDetails.e || null
-            };
-
-            axios.put(`${BASE_URL}/api/tasks/${task.id}/`, taskData, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-                    'Content-Type': 'application/json'
+            // Получаем текущие подзадачи
+            const currentSubtasks = taskDetails.st || taskDetails.subtasks || [];
+            
+            // Обновляем подзадачи, сохраняя их структуру
+            const updatedSubtasks = currentSubtasks.map((st, idx) => {
+                if (idx === subtaskIndex) {
+                    // Если подзадача - строка, преобразуем её в объект
+                    if (typeof st === 'string') {
+                        return { t: st, s: newStatus };
+                    }
+                    // Если подзадача - объект, обновляем только статус
+                    return {
+                        ...st,
+                        s: newStatus,
+                        status: newStatus
+                    };
                 }
-            })
-            .then(response => {
-                const updatedTaskDetails = JSON.parse(response.data.task);
-                const fullTaskDetails = {
-                    title: updatedTaskDetails.t || updatedTaskDetails.title || '',
-                    description: updatedTaskDetails.d || updatedTaskDetails.description || '',
-                    deadline: updatedTaskDetails.dl || updatedTaskDetails.deadline || null,
-                    status: updatedTaskDetails.s || updatedTaskDetails.status || 2,
-                    executor: updatedTaskDetails.e || updatedTaskDetails.executor || null,
-                    event: updatedTaskDetails.ev || updatedTaskDetails.event || null,
-                    subtasks: (updatedTaskDetails.st || updatedTaskDetails.subtasks || []).map(st => ({
-                        title: st.t || st.title || '',
-                        status: st.s || st.status || 2
-                    }))
-                };
-
-                const updatedTask = {
-                    id: response.data.id,
-                    ...fullTaskDetails,
-                    task: response.data.task
-                };
-
-                setEvent(prevEvent => ({
-                    ...prevEvent,
-                    tasks: prevEvent.tasks.map(t => 
-                        t.id === task.id ? updatedTask : t
-                    )
-                }));
-            })
-            .catch(error => {
-                console.error('Ошибка при обновлении статуса подзадачи:', error);
-                alert('Не удалось обновить статус подзадачи. Пожалуйста, попробуйте снова.');
+                // Для остальных подзадач сохраняем текущую структуру
+                if (typeof st === 'string') {
+                    return { t: st, s: 2 };
+                }
+                return st;
             });
+
+            // Формируем обновленный объект задачи
+            const updatedTaskDetails = {
+                ...taskDetails,
+                st: updatedSubtasks
+            };
+
+            // Отправляем обновление на сервер
+            const taskData = {
+                task: JSON.stringify(updatedTaskDetails),
+                event: taskDetails.ev || currentTask.event,
+                executor: taskDetails.e || currentTask.executor
+            };
+
+            const response = await axios.put(
+                `${BASE_URL}/api/tasks/${taskId}/`,
+                taskData,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            // Обновляем локальное состояние
+            setEvent(prevEvent => ({
+                ...prevEvent,
+                tasks: prevEvent.tasks.map(t => {
+                    if (t.id === taskId) {
+                        const parsedTask = JSON.parse(response.data.task);
+                        const processedSubtasks = (parsedTask.st || []).map(st => ({
+                            title: typeof st === 'string' ? st : (st.t || st.title || ''),
+                            status: typeof st === 'string' ? 2 : (st.s || st.status || 2)
+                        }));
+                        
+                        return {
+                            ...t,
+                            task: response.data.task,
+                            subtasks: processedSubtasks
+                        };
+                    }
+                    return t;
+                })
+            }));
+
+            return response.data;
         } catch (error) {
-            console.error('Ошибка при обработке подзадачи:', error);
-            alert('Не удалось обновить статус подзадачи. Пожалуйста, попробуйте снова.');
+            console.error('Ошибка при обновлении статуса подзадачи:', error);
+            throw error;
         }
     };
 
@@ -1108,12 +1131,7 @@ const Event = () => {
                                                                         onChange={(e) => {
                                                                             e.stopPropagation();
                                                                             const newStatus = e.target.checked ? 3 : 2;
-                                                                            handleUpdateSubtaskStatus(
-                                                                                task,
-                                                                                taskDetails,
-                                                                                subIndex,
-                                                                                newStatus
-                                                                            );
+                                                                            updateSubtaskStatus(task.id, subIndex, newStatus);
                                                                         }}
                                                                     />
                                                                     <span className="text-[#0D062D] text-sm">

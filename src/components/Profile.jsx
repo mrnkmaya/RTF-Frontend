@@ -55,25 +55,33 @@ const Profile = () => {
                 return;
             }
 
-            // Обновляем подзадачи
-            const updatedSubtasks = (taskDetails.st || []).map((st, idx) => {
+            // Получаем текущие подзадачи
+            const currentSubtasks = taskDetails.st || taskDetails.subtasks || [];
+            
+            // Обновляем подзадачи, сохраняя их структуру
+            const updatedSubtasks = currentSubtasks.map((st, idx) => {
                 if (idx === subtaskIndex) {
+                    // Если подзадача - строка, преобразуем её в объект
+                    if (typeof st === 'string') {
+                        return { t: st, s: newStatus };
+                    }
+                    // Если подзадача - объект, обновляем только статус
                     return {
-                        t: typeof st === 'object' ? st.t : st,
-                        s: newStatus
+                        ...st,
+                        s: newStatus,
+                        status: newStatus
                     };
                 }
-                return typeof st === 'object' ? st : { t: st, s: 2 };
+                // Для остальных подзадач сохраняем текущую структуру
+                if (typeof st === 'string') {
+                    return { t: st, s: 2 };
+                }
+                return st;
             });
 
             // Формируем обновленный объект задачи
             const updatedTaskDetails = {
-                t: taskDetails.t || taskDetails.title || '',
-                d: taskDetails.d || taskDetails.description || '',
-                dl: taskDetails.dl || taskDetails.deadline || null,
-                s: taskDetails.s || taskDetails.status || 2,
-                e: taskDetails.e || taskDetails.executor || null,
-                ev: taskDetails.ev || taskDetails.event || null,
+                ...taskDetails,
                 st: updatedSubtasks
             };
 
@@ -98,13 +106,16 @@ const Profile = () => {
             // Обновляем локальное состояние
             setTasks(prevTasks => prevTasks.map(t => {
                 if (t.id === taskId) {
+                    const parsedTask = JSON.parse(response.data.task);
+                    const processedSubtasks = (parsedTask.st || []).map(st => ({
+                        title: typeof st === 'string' ? st : (st.t || st.title || ''),
+                        status: typeof st === 'string' ? 2 : (st.s || st.status || 2)
+                    }));
+                    
                     return {
                         ...t,
                         task: response.data.task,
-                        subtasks: updatedSubtasks.map(st => ({
-                            title: st.t,
-                            status: st.s
-                        }))
+                        subtasks: processedSubtasks
                     };
                 }
                 return t;
@@ -154,6 +165,72 @@ const Profile = () => {
 
     const editableFields = getEditableFields();
 
+    const fetchTasks = async () => {
+        try {
+            const response = await axios.get(`${BASE_URL}/api/tasks/`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            });
+
+            const processedTasks = response.data.map(task => {
+                try {
+                    const taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
+
+                    // Проверяем, является ли пользователь исполнителем
+                    const executors = Array.isArray(taskDetails.e) ? taskDetails.e : [taskDetails.e].filter(Boolean);
+                    const executorsIds = executors.map(id => parseInt(id));
+                    const isExecutor = executorsIds.includes(parseInt(viewedProfileId));
+
+                    if (!isExecutor) {
+                        return null;
+                    }
+
+                    // Обрабатываем подзадачи
+                    const subtasks = (taskDetails.st || taskDetails.subtasks || []).map(st => {
+                        if (typeof st === 'string') {
+                            return { title: st, status: 2 };
+                        }
+                        return {
+                            title: st.t || st.title || '',
+                            status: st.s || st.status || 2
+                        };
+                    });
+
+                    const processedTask = {
+                        id: task.id,
+                        title: taskDetails.t || taskDetails.title || 'Без названия',
+                        description: taskDetails.d || taskDetails.description || '',
+                        deadline: taskDetails.dl || taskDetails.deadline || null,
+                        status: taskDetails.s || taskDetails.status || task.status || 2,
+                        executor: taskDetails.e || taskDetails.executor || null,
+                        event: taskDetails.ev || taskDetails.event || null,
+                        subtasks: subtasks,
+                        task: JSON.stringify({
+                            t: taskDetails.t || taskDetails.title || 'Без названия',
+                            d: taskDetails.d || taskDetails.description || '',
+                            dl: taskDetails.dl || taskDetails.deadline || null,
+                            s: taskDetails.s || taskDetails.status || task.status || 2,
+                            e: taskDetails.e || taskDetails.executor || null,
+                            ev: taskDetails.ev || taskDetails.event || null,
+                            st: subtasks
+                        }),
+                        is_past: (typeof task.is_past !== 'undefined' ? task.is_past : (typeof taskDetails.is_past !== 'undefined' ? taskDetails.is_past : false)),
+                    };
+
+                    return processedTask;
+                } catch (error) {
+                    console.error('Error processing task:', error);
+                    return null;
+                }
+            }).filter(Boolean);
+
+            setTasks(processedTasks);
+        } catch (error) {
+            console.error('Error fetching tasks:', error);
+        }
+    };
+
     useEffect(() => {
         const fetchProfileData = async () => {
             setIsLoading(true);
@@ -183,88 +260,10 @@ const Profile = () => {
                 });
 
                 // Получаем все задачи
-                const tasksResponse = await axios.get(`${BASE_URL}/api/tasks/`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                    }
-                });
+                await fetchTasks();
 
-                // Обрабатываем задачи
-                const processedTasks = tasksResponse.data
-                    .map(task => {
-                        try {
-                            let taskDetails;
-                            if (typeof task.task === 'string') {
-                                try {
-                                    taskDetails = JSON.parse(task.task);
-                                } catch (e) {
-                                    console.error('Error parsing task:', e);
-                                    taskDetails = {
-                                        t: task.task,
-                                        d: '',
-                                        dl: null,
-                                        s: task.status || 2,
-                                        e: task.executor,
-                                        st: []
-                                    };
-                                }
-                            } else {
-                                taskDetails = task;
-                            }
-
-                            // Проверяем, является ли пользователь исполнителем
-                            const executors = Array.isArray(taskDetails.e) ? taskDetails.e : [taskDetails.e].filter(Boolean);
-                            const executorsIds = executors.map(id => parseInt(id));
-                            const isExecutor = executorsIds.includes(parseInt(viewedProfileId));
-
-                            if (!isExecutor) {
-                                return null;
-                            }
-
-                            // Обрабатываем подзадачи
-                            const subtasks = (taskDetails.st || []).map(st => {
-                                if (typeof st === 'string') {
-                                    return { t: st, s: 2 };
-                                }
-                                return {
-                                    t: st.t || st.title || '',
-                                    s: st.s || st.status || 2
-                                };
-                            });
-
-                            const processedTask = {
-                                id: task.id,
-                                title: taskDetails.t || taskDetails.title || 'Без названия',
-                                description: taskDetails.d || taskDetails.description || '',
-                                deadline: taskDetails.dl || taskDetails.deadline || null,
-                                status: taskDetails.s || taskDetails.status || task.status || 2,
-                                executor: taskDetails.e || taskDetails.executor || null,
-                                event: taskDetails.ev || taskDetails.event || null,
-                                subtasks: subtasks,
-                                task: JSON.stringify({
-                                    t: taskDetails.t || taskDetails.title || 'Без названия',
-                                    d: taskDetails.d || taskDetails.description || '',
-                                    dl: taskDetails.dl || taskDetails.deadline || null,
-                                    s: taskDetails.s || taskDetails.status || task.status || 2,
-                                    e: taskDetails.e || taskDetails.executor || null,
-                                    ev: taskDetails.ev || taskDetails.event || null,
-                                    st: subtasks
-                                }),
-                                is_past: (typeof task.is_past !== 'undefined' ? task.is_past : (typeof taskDetails.is_past !== 'undefined' ? taskDetails.is_past : false)),
-                            };
-
-                            return processedTask;
-                        } catch (error) {
-                            console.error('Error processing task:', error);
-                            return null;
-                        }
-                    })
-                    .filter(task => task !== null)
-                    .filter(task => !task.is_past || task.is_past === false || task.is_past === 0 || task.is_past === 'false');
-                
                 setProfileData(response.data.profile);
                 setEvents(response.data.events || []);
-                setTasks(processedTasks);
             } catch (error) {
                 console.error("Error loading data:", error);
                 if (error.response?.status === 403) {
