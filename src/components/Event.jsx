@@ -15,8 +15,10 @@ const textStyleSemibold = 'font-gilroy_semibold text-[#0D062D]';
 
 const formatUserName = (fullName) => {
     if (!fullName) return '';
-    const parts = fullName.split(' ');
-    if (parts.length < 2) return fullName;
+    // Убедимся, что fullName - строка
+    const nameStr = String(fullName);
+    const parts = nameStr.split(' ');
+    if (parts.length < 2) return nameStr;
     
     const lastName = parts[0];
     const initials = parts.slice(1).map(name => name.charAt(0) + '.').join(' ');
@@ -740,20 +742,22 @@ const Event = () => {
                 if (idx === subtaskIndex) {
                     // Если подзадача - строка, преобразуем её в объект
                     if (typeof st === 'string') {
-                        return { t: st, s: newStatus };
+                        return { t: String(st), s: newStatus };
                     }
                     // Если подзадача - объект, обновляем только статус
                     return {
-                        ...st,
-                        s: newStatus,
-                        status: newStatus
+                        t: String(st.t || st.title || ''),
+                        s: newStatus
                     };
                 }
                 // Для остальных подзадач сохраняем текущую структуру
                 if (typeof st === 'string') {
-                    return { t: st, s: st.s || 2 };
+                    return { t: String(st), s: st.s || 2 };
                 }
-                return st;
+                return {
+                    t: String(st.t || st.title || ''),
+                    s: st.s || st.status || 2
+                };
             });
 
             // Формируем обновленный объект задачи
@@ -787,7 +791,7 @@ const Event = () => {
                     if (t.id === taskId) {
                         const parsedTask = JSON.parse(response.data.task);
                         const processedSubtasks = (parsedTask.st || []).map(st => ({
-                            title: typeof st === 'string' ? st : (st.t || st.title || ''),
+                            title: typeof st === 'string' ? String(st) : String(st.t || st.title || ''),
                             status: typeof st === 'string' ? 2 : (st.s || st.status || 2)
                         }));
                         
@@ -1280,14 +1284,14 @@ const Event = () => {
                                                 </div>
                                                 {/* Исполнитель справа */}
                                                 {taskDetails?.executor && (
-                                                    <div className="flex gap-1">
+                                                    <div className="flex flex-wrap gap-1 justify-end">
                                                         {Array.isArray(taskDetails.executor) 
                                                             ? taskDetails.executor.map(executorId => (
-                                                                <span key={executorId} className="bg-[#F4F4F4] px-2 py-1 rounded-xl font-gilroy_semibold text-[#0D062D] text-[15px]">
+                                                                <span key={executorId} className="bg-[#F4F4F4] px-2 py-1 rounded-xl font-gilroy_semibold text-[#0D062D] text-[15px] whitespace-nowrap">
                                                                     {formatUserName(orgs[executorId])}
                                                                 </span>
                                                             ))
-                                                            : <span className="bg-[#F4F4F4] px-2 py-1 rounded-xl font-gilroy_semibold text-[#0D062D] text-[15px]">
+                                                            : <span className="bg-[#F4F4F4] px-2 py-1 rounded-xl font-gilroy_semibold text-[#0D062D] text-[15px] whitespace-nowrap">
                                                                 {formatUserName(orgs[taskDetails.executor])}
                                                               </span>
                                                         }

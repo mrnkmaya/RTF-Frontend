@@ -65,20 +65,22 @@ const Profile = () => {
                 if (idx === subtaskIndex) {
                     // Если подзадача - строка, преобразуем её в объект
                     if (typeof st === 'string') {
-                        return { t: st, s: newStatus };
+                        return { t: String(st), s: newStatus };
                     }
                     // Если подзадача - объект, обновляем только статус
                     return {
-                        ...st,
-                        s: newStatus,
-                        status: newStatus
+                        t: String(st.t || st.title || ''),
+                        s: newStatus
                     };
                 }
                 // Для остальных подзадач сохраняем текущую структуру
                 if (typeof st === 'string') {
-                    return { t: st, s: 2 };
+                    return { t: String(st), s: st.s || 2 };
                 }
-                return st;
+                return {
+                    t: String(st.t || st.title || ''),
+                    s: st.s || st.status || 2
+                };
             });
 
             // Формируем обновленный объект задачи
@@ -111,7 +113,7 @@ const Profile = () => {
                     if (t.id === taskId) {
                         const parsedTask = JSON.parse(response.data.task);
                         const processedSubtasks = (parsedTask.st || []).map(st => ({
-                            title: typeof st === 'string' ? st : (st.t || st.title || ''),
+                            title: typeof st === 'string' ? String(st) : String(st.t || st.title || ''),
                             status: typeof st === 'string' ? 2 : (st.s || st.status || 2)
                         }));
                         
