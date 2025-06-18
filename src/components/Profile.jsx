@@ -13,6 +13,110 @@ const INPUT_FIELD_STYLE = " h-[40px] rounded-lg bg-[#F1F4F9] border-[#D8D8D8]";
 
 const checkPlaceholder = (data) => data || 'Не указано';
 
+const MiniCalendar = ({ tasks, events, profileId }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // Форматируем дату для сравнения (YYYY-MM-DD)
+  const formatDate = (date) => {
+    return date.toISOString().split('T')[0];
+  };
+  
+  // Получаем задачи на текущий день
+  const getTasksForDate = () => {
+    return tasks.filter(task => {
+      try {
+        if (!task.deadline) return false;
+        
+        // Проверяем дату
+        const taskDate = new Date(task.deadline);
+        if (formatDate(taskDate) !== formatDate(currentDate)) return false;
+        
+        // Проверяем исполнителей (аналогично основной логике)
+        const taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
+        const executors = Array.isArray(taskDetails.e) ? taskDetails.e : [taskDetails.e].filter(Boolean);
+        const executorsIds = executors.map(id => parseInt(id));
+        
+        return executorsIds.includes(parseInt(profileId));
+      } catch (error) {
+        console.error('Error processing task:', task, error);
+        return false;
+      }
+    });
+  };
+  
+  // Получаем мероприятия на текущий день
+  const getEventsForDate = () => {
+    return events.filter(event => {
+      if (!event.date) return false;
+      const eventDate = new Date(event.date);
+      return formatDate(eventDate) === formatDate(currentDate);
+    });
+  };
+  
+  const dayTasks = getTasksForDate();
+  const dayEvents = getEventsForDate();
+  
+  return (
+    <div className="bg-white p-2 rounded-xl w-full">
+      
+      <div className="space-y-3">
+        {dayTasks.length > 0 && (
+          <div>
+            <h4 className="font-gilroy_semibold text-[#0D062D] text-sm mb-2">Задачи</h4>
+        {dayTasks.map(task => {
+        // Получаем название задачи (аналогично основной логике)
+        const taskDetails = typeof task.task === 'string' ? JSON.parse(task.task) : task;
+        const taskTitle = taskDetails.t || taskDetails.title || 'Без названия';
+        const taskStatus = taskDetails.s || taskDetails.status || 2;
+        const eventId = taskDetails.ev || task.event; // Получаем ID связанного мероприятия
+        const taskTime = task.deadline ? 
+            new Date(task.deadline).toLocaleTimeString('ru-RU', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            }) : '--:--';
+            
+        return (
+            <Link 
+            key={`task-${task.id}`} 
+            to={`/event?id=${eventId}`} // Ссылка на мероприятие, к которому относится задача
+            className="flex items-center justify-between p-2 bg-[#DFA87433] rounded-lg hover:bg-[#e0e0e0] transition-colors w-full"
+            >
+                <span className="text-xl text-[#DFA874] w-10">
+                    {taskTime}
+                </span>
+            <span className="text-xl  truncate max-w-[150px]">{taskTitle}</span>
+            </Link>
+        );
+        })}
+          </div>
+        )}
+        
+        {dayEvents.length > 0 && (
+          <div>
+            <h4 className="font-gilroy_semibold text-[#0D062D] text-sm mb-2">Мероприятия</h4>
+            {dayEvents.map(event => (
+              <Link 
+                key={`event-${event.id}`} 
+                to={`/event?id=${event.id}`}
+                className="flex items-center gap-2 p-2 bg-[#CCE8FF] rounded-lg hover:bg-[#b3d9ff] mb-2"
+              >
+                <span className="text-xl truncate max-w-[150px]">{event.title}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+        
+        {dayTasks.length === 0 && dayEvents.length === 0 && (
+          <p className="text-sm text-gray-500 text-center py-4">
+            На выбранный день нет задач и мероприятий
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Profile = () => {
     const [profileData, setProfileData] = useState({});
     const [events, setEvents] = useState([]);
@@ -874,8 +978,28 @@ const Profile = () => {
                 </div>
             </div>
 
+            
+
             {/* Блок мероприятий */}
             {currentUserAccessLevel >= 1 && (
+                <div className="flex gap-6">
+                    <div className="w-[303px] h-auto bg-[#FFFFFF] rounded-3xl p-6 mb-6">
+                    <div className="flex items-center mb-3">
+                        <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
+                        <h1 className="font-gilroy_semibold text-[#0D062D] text-[32px] mr-auto leading-[38px]">
+                        {new Date().toLocaleDateString('ru-RU', { 
+                            day: 'numeric', 
+                            month: 'long' 
+                        })}
+                        </h1>
+                    </div>
+                
+                    <MiniCalendar 
+                        tasks={tasks} 
+                        events={events} 
+                        profileId={viewedProfileId} 
+                    />
+            </div>
                 <div className="w-[956px] h-auto bg-[#FFFFFF] rounded-3xl p-6">
                     <div className="flex items-center mb-6">
                         <div className="h-[29px] w-[8px] bg-[#008CFF] rounded mr-2"/>
@@ -1217,6 +1341,7 @@ const Profile = () => {
                         </div>
                     </div>
                 )}
+            </div>
             </div>
             )}
 
