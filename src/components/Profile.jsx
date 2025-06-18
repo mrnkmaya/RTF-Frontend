@@ -177,18 +177,31 @@ const Profile = () => {
     };
 
     const getEditableFields = () => {
-        // Для 3 уровня все поля редактируемы
+        // Для 3 уровня
         if (currentUserAccessLevel === 3) {
-            return {
-                commission: true,
-                status: true,
-                date_of_birth: true,
-                number_phone: true,
-                email: true,
-                adress: true
-            };
+            if (isOwnProfile) {
+                // Для своего профиля можно редактировать всё
+                return {
+                    commission: true,
+                    status: true,
+                    date_of_birth: true,
+                    number_phone: true,
+                    email: true,
+                    adress: true
+                };
+            } else {
+                // Для чужих профилей только должность и комиссию
+                return {
+                    commission: true,
+                    status: true,
+                    date_of_birth: false,
+                    number_phone: false,
+                    email: false,
+                    adress: false
+                };
+            }
         }
-        
+        //ss
         // Для 1 и 2 уровня только свои данные, кроме должности и комиссии
         return {
             commission: false,
@@ -219,7 +232,8 @@ const Profile = () => {
                     const executorsIds = executors.map(id => parseInt(id));
                     const isExecutor = executorsIds.includes(parseInt(viewedProfileId));
 
-                    if (!isExecutor) {
+                    // Не показываем задачи из архивных мероприятий
+                    if (!isExecutor || task.is_past) {
                         return null;
                     }
 
