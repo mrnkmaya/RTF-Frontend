@@ -235,7 +235,10 @@ const EventsOnDay = () => {
                 />
                 )}
                 <h2 className="text-[#0d062d] font-gilroy_heavy text-[48px] leading-[61px]">
-                    <span className="text-[100px] leading-[127px] mr-[16px]">{`${format(eventDate, 'dd')}`}</span> {`${curMonth}${curMonth.endsWith('ь') ? 'я' : 'а'}`}
+                    <span className="text-[100px] leading-[127px] mr-[16px]">{`${format(eventDate, 'dd')}`}</span> {curMonth === 'май' ? 'мая' :
+                        curMonth.endsWith('ь') ?
+                        curMonth.slice(0, -1) + 'я' :
+                        curMonth + 'а'}
                 </h2>
                 <div className="flex justify-start flex-wrap">
                     {thisDayEvents.map((event) => {
