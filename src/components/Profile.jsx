@@ -16,6 +16,22 @@ const checkPlaceholder = (data) => data || 'Не указано';
 const MiniCalendar = ({ tasks, events, profileId }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   
+//   // Добавляем эффект для проверки смены дня
+//   useEffect(() => {
+//     const checkDateChange = () => {
+//       const now = new Date();
+//       if (now.getDate() !== currentDate.getDate()) {
+//         setCurrentDate(now);
+//       }
+//     };
+    
+//     // Проверяем каждую минуту
+//     const intervalId = setInterval(checkDateChange, 60000);
+    
+//     return () => clearInterval(intervalId);
+//   }, [currentDate]);
+
+  
   // Форматируем дату для сравнения (YYYY-MM-DD)
   const formatDate = (date) => {
     return date.toISOString().split('T')[0];
